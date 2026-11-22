@@ -18,16 +18,16 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Stand-in for the broadcast tuner's audio path.
+ * Stand-in for the broadcast tuner's audio path on bands without a real stream (AM, DAB, DRM, ATSC).
  *
  * Generates a soft, station-specific chord pad (so play/pause/tune are audible on the emulator),
- * a short burst of static when retuning, and analogue-style hiss on AM/DRM proportional to the
+ * a short burst of static when retuning, and analogue-style hiss on FM/AM/DRM proportional to the
  * weak signal. Requests media audio focus like a real radio source: pauses on permanent loss,
  * suspends on transient loss (navigation prompts, calls) and ducks when asked.
  */
-class SimulatedBroadcastAudio(context: Context) : RadioAudioOutput {
+class SimulatedBroadcastAudio(context: Context) {
 
-    override var onFocusLost: (() -> Unit)? = null
+    var onFocusLost: (() -> Unit)? = null
 
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val main = Handler(Looper.getMainLooper())
@@ -47,7 +47,7 @@ class SimulatedBroadcastAudio(context: Context) : RadioAudioOutput {
     private var current: Station? = null
     private var worker: Worker? = null
 
-    override fun play(station: Station) {
+    fun play(station: Station) {
         val retune = current != null && current?.id != station.id
         current = station
         if (!hasFocus) {
@@ -59,7 +59,7 @@ class SimulatedBroadcastAudio(context: Context) : RadioAudioOutput {
         w.started = true
     }
 
-    override fun stop() {
+    fun stop() {
         resumeOnGain = false
         stopWorker()
         if (hasFocus) {
@@ -68,7 +68,7 @@ class SimulatedBroadcastAudio(context: Context) : RadioAudioOutput {
         }
     }
 
-    override fun release() = stop()
+    fun release() = stop()
 
     private fun stopWorker() {
         worker?.finish()
@@ -115,6 +115,8 @@ class SimulatedBroadcastAudio(context: Context) : RadioAudioOutput {
             hiss = when (station.band) {
                 Band.DAB -> 0.0
                 Band.DRM -> 0.15 * weak
+                Band.FM -> 0.3 * weak
+                Band.ATSC -> 0.0
                 Band.AM -> 0.25 + 0.5 * weak
             }
             if (staticBurst) staticSamples = SAMPLE_RATE * 35 / 100

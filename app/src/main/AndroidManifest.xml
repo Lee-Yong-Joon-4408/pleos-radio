@@ -6,6 +6,9 @@
     <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!-- FM plays the broadcasters' official internet simulcasts -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".RadioApplication"
         android:allowBackup="false"

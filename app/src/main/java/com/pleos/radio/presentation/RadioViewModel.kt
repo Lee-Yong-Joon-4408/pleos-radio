@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pleos.radio.RadioApplication
+import com.pleos.radio.audio.AudioStatus
 import com.pleos.radio.domain.Band
 import com.pleos.radio.domain.RadioLogic
 import com.pleos.radio.domain.Station
@@ -20,7 +21,7 @@ enum class Section { RADIO, MEDIA, PHONE, NAVIGATION, SETTINGS }
 
 data class RadioUiState(
     val section: Section = Section.RADIO,
-    val band: Band = Band.DAB,
+    val band: Band = Band.FM,
     val stations: List<Station> = emptyList(),
     val current: Station? = null,
     val playing: Boolean = true,
@@ -33,6 +34,7 @@ data class RadioUiState(
     val scanProgress: Float = 0f,
     val labelIndex: Int = 0,
     val audioEnabled: Boolean = true,
+    val audioStatus: AudioStatus = AudioStatus.Idle,
     val message: String? = null,
 ) {
     val isFavorite: Boolean get() = current?.id in favorites
@@ -61,8 +63,9 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         audio.onFocusLost = { _ui.update { it.copy(playing = false) } }
-        showBand(prefs.lastBand() ?: Band.DAB)
+        showBand(prefs.lastBand() ?: Band.entries.first())
         syncAudio()
+        viewModelScope.launch { audio.status.collect { s -> _ui.update { it.copy(audioStatus = s) } } }
         // Rotate the dynamic label (DLS / radiotext) like a real receiver.
         viewModelScope.launch {
             while (true) {
@@ -109,10 +112,16 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         syncAudio()
     }
 
-    /** Previous / next service (DAB) or seek to the previous / next receivable frequency (DRM, AM). */
+    /** Previous / next service (DAB) or seek to the previous / next receivable frequency (DRM, FM, AM, ATSC). */
     fun seek(step: Int) {
         val s = _ui.value
         RadioLogic.adjacent(s.stations, s.current?.id, step)?.let(::tune)
+    }
+
+    /** Re-connect after a stream error. */
+    fun retry() {
+        _ui.update { it.copy(playing = true) }
+        syncAudio()
     }
 
     fun togglePlay() {
@@ -225,12 +234,15 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     private fun syncAudio() {
         val s = _ui.value
         val station = s.current
-        if (s.playing && s.audioEnabled && station != null) audio.play(station) else audio.stop()
+        // Real streams always play; the simulated tone can be switched off in Settings.
+        val audible = station != null && (station.stream != null || s.audioEnabled)
+        if (s.playing && audible) audio.play(station!!) else audio.stop()
     }
 
     override fun onCleared() {
+        // Audio is app-scoped (it survives Activity recreation), so only stop it here.
         audio.onFocusLost = null
-        audio.release()
+        audio.stop()
     }
 
     private companion object {

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pleos.radio.audio.AudioStatus
 import com.pleos.radio.domain.Band
 import com.pleos.radio.domain.RadioLogic
 import com.pleos.radio.domain.Station
@@ -78,7 +80,7 @@ fun RadioScreen(ui: RadioUiState, vm: RadioViewModel) {
                 StationListButton(vm::openStationList)
             }
             Spacer(Modifier.height(52.dp))
-            NowPlaying(ui)
+            NowPlaying(ui, vm::retry)
             PlaybackControls(ui, vm, Modifier.padding(start = 334.dp))
             Spacer(Modifier.weight(1f))
             PresetBar(ui, vm)
@@ -111,7 +113,7 @@ private fun BandTab(label: String, selected: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
     Box(
         Modifier
-            .width(244.dp)
+            .width(150.dp)
             .height(72.dp)
             .then(
                 if (selected) Modifier
@@ -153,7 +155,7 @@ private fun StationListButton(onClick: () -> Unit) {
 // --- now playing --------------------------------------------------------------------------
 
 @Composable
-private fun NowPlaying(ui: RadioUiState) {
+private fun NowPlaying(ui: RadioUiState, onRetry: () -> Unit) {
     val station = ui.current
     Row(Modifier.height(272.dp)) {
         StationArtwork(ui.band, ui.playing, Modifier.size(width = 282.dp, height = 272.dp))
@@ -164,7 +166,11 @@ private fun NowPlaying(ui: RadioUiState) {
             return@Row
         }
         Column {
-            Pill(station.badge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Pill(station.badge)
+                Spacer(Modifier.width(14.dp))
+                if (ui.playing) AudioStatusChip(ui.audioStatus, onRetry)
+            }
             Spacer(Modifier.height(14.dp))
             Text(station.name, color = RadioColors.Text, fontSize = 52.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                 overflow = TextOverflow.Ellipsis)
@@ -231,6 +237,31 @@ private fun RoundControl(
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(size * 0.5f))
+    }
+}
+
+/** LIVE / Connecting / error (tap to retry) / simulated, next to the service badge. */
+@Composable
+private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
+    when (status) {
+        AudioStatus.Live -> Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(12.dp).background(Color(0xFFFF4D5E), CircleShape))
+            Spacer(Modifier.width(8.dp))
+            Text("LIVE", color = RadioColors.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+        }
+        AudioStatus.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(Modifier.size(18.dp), color = RadioColors.AccentBright, strokeWidth = 2.dp)
+            Spacer(Modifier.width(10.dp))
+            Text("Connecting…", color = RadioColors.Muted, fontSize = 20.sp)
+        }
+        is AudioStatus.Error -> Text(
+            "${status.message} · Retry",
+            color = Color(0xFFFF7A85),
+            fontSize = 20.sp,
+            modifier = Modifier.clickable(role = Role.Button, onClickLabel = "Retry", onClick = onRetry),
+        )
+        AudioStatus.Simulated -> Text("Simulated audio", color = RadioColors.Muted.copy(alpha = 0.7f), fontSize = 18.sp)
+        AudioStatus.Idle -> Unit
     }
 }
 

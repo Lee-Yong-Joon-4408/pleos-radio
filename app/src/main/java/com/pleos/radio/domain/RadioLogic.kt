@@ -29,9 +29,13 @@ object RadioLogic {
     fun filter(stations: List<Station>, favorites: Set<String>, onlyFavorites: Boolean): List<Station> =
         if (onlyFavorites) stations.filter { it.id in favorites } else stations
 
-    /** Restore a saved preset list, padding/truncating to [slots] and dropping ids no longer receivable. */
+    /**
+     * Restore a saved preset list, padding/truncating to [slots] and dropping ids no longer receivable.
+     * If nothing saved is receivable any more (e.g. the station list was replaced), use [fallback].
+     */
     fun restorePresets(saved: List<String?>?, known: Set<String>, fallback: List<String?>, slots: Int = PRESET_SLOTS): List<String?> {
         if (saved == null) return fallback
-        return List(slots) { i -> saved.getOrNull(i)?.takeIf { it in known } }
+        val restored = List(slots) { i -> saved.getOrNull(i)?.takeIf { it in known } }
+        return if (restored.all { it == null }) fallback else restored
     }
 }

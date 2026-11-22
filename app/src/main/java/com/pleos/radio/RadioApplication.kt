@@ -1,13 +1,22 @@
 package com.pleos.radio
 
 import android.app.Application
+import com.pleos.radio.audio.HybridRadioAudio
 import com.pleos.radio.audio.RadioAudioOutput
 import com.pleos.radio.audio.SimulatedBroadcastAudio
+import com.pleos.radio.audio.StreamingRadioAudio
 import com.pleos.radio.data.RadioPreferences
 import com.pleos.radio.data.StationCatalog
+import com.pleos.radio.data.StreamResolver
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /** Minimal service locator (same pattern as the forked pleos-steerin app). */
 class RadioApplication : Application() {
+
+    /** Lives as long as the process; audio outlives individual screens. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     lateinit var catalog: StationCatalog
         private set
@@ -20,6 +29,10 @@ class RadioApplication : Application() {
         super.onCreate()
         catalog = StationCatalog()
         preferences = RadioPreferences(this)
-        audio = SimulatedBroadcastAudio(this)
+        audio = HybridRadioAudio(
+            simulated = SimulatedBroadcastAudio(this),
+            streaming = StreamingRadioAudio(this, StreamResolver(), appScope),
+            scope = appScope,
+        )
     }
 }

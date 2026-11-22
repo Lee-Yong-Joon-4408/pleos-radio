@@ -13,7 +13,7 @@ android {
         minSdk = 28           // Pleos Connect guide: API 28+
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.2.0"
     }
 
     buildTypes {
@@ -57,6 +57,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.coroutines.android)
+
+    // Real FM audio: broadcasters' official HLS simulcasts
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls)
 
     testImplementation(libs.junit)
     debugImplementation(libs.androidx.compose.ui.tooling)

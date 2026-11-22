@@ -54,6 +54,12 @@ class RadioLogicTest {
         assertEquals(fallback, RadioLogic.restorePresets(null, known, fallback))
     }
 
+    @Test fun restorePresetsFallsBackWhenNothingIsReceivable() {
+        val known = dab.map { it.id }.toSet()
+        val fallback = RadioLogic.defaultPresets(dab)
+        assertEquals(fallback, RadioLogic.restorePresets(listOf("old_1", "old_2", null), known, fallback))
+    }
+
     @Test fun favoritesToggleAndFilter() {
         val favs = RadioLogic.toggle(emptySet(), "dab_kmusic")
         assertTrue("dab_kmusic" in favs)

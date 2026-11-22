@@ -92,7 +92,7 @@ private fun MiniPlayer(ui: RadioUiState, vm: RadioViewModel) {
 @Composable
 fun SettingsScreen(ui: RadioUiState, vm: RadioViewModel) {
     Column(Modifier.fillMaxSize().padding(horizontal = 52.dp, vertical = 36.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SettingRow("Simulated broadcast audio", "Play a generated tone for each station (tuner HAL is not available to apps)") {
+        SettingRow("Simulated audio (AM · DAB · DRM · ATSC)", "FM always plays the broadcaster's live internet stream; other bands use a generated tone") {
             Switch(
                 checked = ui.audioEnabled,
                 onCheckedChange = vm::setAudioEnabled,
