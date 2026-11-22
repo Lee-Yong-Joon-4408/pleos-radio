@@ -89,19 +89,22 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     val ui: StateFlow<RadioUiState> = _ui.asStateFlow()
 
     init {
-        // One-time: add the virtual RF channels to preset lists saved before they existed.
-        if (!prefs.rfPresetsAdded()) {
-            Band.entries.forEach { band ->
-                val rfIds = stationsByBand.getValue(band).filter { it.virtualRf }.map { it.id }
-                val before = presetsByBand.getValue(band)
-                val after = RadioLogic.addToEmptySlots(before, rfIds)
-                if (after != before) {
-                    presetsByBand[band] = after
-                    prefs.savePresets(band, after)
-                }
+        // RF channels (virtual RF twins, T-DMB) and the hr3 / SWR3 FM+DAB pairs are put into an empty preset slot
+        // once, also on preset lists saved before they existed; afterwards the user's choices are left alone.
+        val added = prefs.autoAddedPresets()
+        val newlyAdded = mutableSetOf<String>()
+        Band.entries.forEach { band ->
+            val rfIds = catalog.autoPresetIds(band).filter { it !in added }
+            if (rfIds.isEmpty()) return@forEach
+            val before = presetsByBand.getValue(band)
+            val after = RadioLogic.addToEmptySlots(before, rfIds)
+            if (after != before) {
+                presetsByBand[band] = after
+                prefs.savePresets(band, after)
             }
-            prefs.markRfPresetsAdded()
+            newlyAdded += rfIds
         }
+        if (newlyAdded.isNotEmpty()) prefs.saveAutoAddedPresets(added + newlyAdded)
     }
 
     private var scanJob: Job? = null

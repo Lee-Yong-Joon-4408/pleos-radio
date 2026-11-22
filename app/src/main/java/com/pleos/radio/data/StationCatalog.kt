@@ -21,10 +21,14 @@ class StationCatalog(private val random: Random = Random.Default) {
         s.copy(logoUrl = LOGOS[s.baseId], logoOnDark = s.baseId in LOGOS_ON_DARK)
     }
 
+    /** Stations put into an empty preset slot once (also on preset lists saved before they existed). */
+    fun autoPresetIds(band: Band): List<String> =
+        stations(band).filter { it.virtualRf || it.id in AUTO_PRESETS }.map { it.id }
+
     private fun stationsWithoutLogos(band: Band): List<Station> = when (band) {
-        Band.DAB -> DAB + rfTwins(DAB, "dab_bbc_world", "dab_de_dlf", "dab_de_bayern3")
+        Band.DAB -> DAB + rfTwins(DAB, "dab_bbc_world", "dab_de_dlf", "dab_de_bayern3") + KR_TDMB
         Band.DRM -> DRM + rfTwins(DRM, "drm_air_delhi_a", "drm_air_kolkata_a", "drm_air_vb_delhi")
-        Band.FM -> FM + rfTwins(FM, "fm_kbs_cool", "fm_mbc_fm4u", "fm_sbs_power")
+        Band.FM -> FM + FM_DE + rfTwins(FM, "fm_kbs_cool", "fm_mbc_fm4u", "fm_sbs_power")
         Band.ATSC -> ATSC + rfTwins(ATSC, "atsc_kbs1", "atsc_kbs2", "atsc_ebs1")
         Band.AM -> AM + rfTwins(AM, "am_kbs_1radio", "am_cbs_standard", "am_febc")
     }
@@ -40,6 +44,22 @@ class StationCatalog(private val random: Random = Random.Default) {
          * Virtual RF-network channels (three per band): the same services presented as received over the RF
          * broadcast network, while the audio is actually relayed from the station's IP stream.
          */
+        /**
+         * Korean T-DMB radio that simulcasts an FM station: U-KBS MUSIC re-transmits most KBS 쿨FM (89.1 MHz)
+         * programmes (Korean Wikipedia, KBS 제2FM schedule as of 2026-05). Seoul-area T-DMB CH 12B = 207.008 MHz
+         * in the Korean channel plan (different numbering from the European DAB plan). Shown as RF (DMB)
+         * reception; the audio is relayed from KBS 쿨FM's IP stream, which carries the same content.
+         */
+        val KR_TDMB = listOf(
+            Station(
+                id = "dab_ukbs_music", band = Band.DAB, name = "U-KBS MUSIC", frequencyKhz = 207_008, channel = "12B (KR)",
+                badge = "T-DMB", programme = "Same as FM 89.1 KBS 쿨FM",
+                slogan = "T-DMB channel · audio relayed over IP (KBS 쿨FM)", genre = "Pop / K-Pop",
+                signal = 4, stream = StreamSource.Kbs(25),
+                speechLanguage = "ko-KR", translateCaptions = false, virtualRf = true,
+            ),
+        )
+
         fun rfTwins(list: List<Station>, vararg ids: String): List<Station> = ids.map { id ->
             val s = list.first { it.id == id }
             s.copy(
@@ -67,6 +87,7 @@ class StationCatalog(private val random: Random = Random.Default) {
         val LOGOS = mapOf(
             // KBS (channel logos from the KBS live API)
             "fm_kbs_cool" to KBS_LOGO + "11/1741700004290_443824.png",
+            "dab_ukbs_music" to KBS_LOGO + "11/1741700004290_443824.png",
             "fm_kbs_classic" to KBS_LOGO + "11/1741700004216_443813.png",
             "fm_kbs_1radio" to KBS_LOGO + "7/1741313100641_442721.png",
             "fm_kbs_happy" to KBS_LOGO + "11/1741700004070_443799.png",
@@ -105,6 +126,8 @@ class StationCatalog(private val random: Random = Random.Default) {
             "dab_de_bayern3" to ARD_IMAGE + "52fd25fc45de7c6a?w=512",
             "dab_de_swr3" to "https://www.swr3.de/assets/swr3/icons/apple-touch-icon.png",
             "dab_de_hr3" to "https://www.hr3.de/favicon.png",
+            "fm_de_swr3" to "https://www.swr3.de/assets/swr3/icons/apple-touch-icon.png",
+            "fm_de_hr3" to "https://www.hr3.de/favicon.png",
             "dab_de_radioeins" to "https://www.radioeins.de/content/dam/rbb/rbb/logos/touch/rad-152.png",
             // All India Radio (Akashvani channel artwork)
             "drm_air_mumbai_b" to AIR_LOGO + "airmumbaiasmita.jpg",
@@ -216,10 +239,8 @@ class StationCatalog(private val random: Random = Random.Default) {
                 "https://dispatcher.rndfnk.com/br/br3/live/mp3/mid"),
             dabDe("dab_de_ndr2", "NDR 2", "7A", 188_928, "NDR · Niedersachsen (Hannover)", "Pop",
                 "https://icecast.ndr.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3"),
-            dabDe("dab_de_swr3", "SWR3", "9D", 208_064, "SWR · Baden-Württemberg (Stuttgart)", "Pop",
-                "https://liveradio.swr.de/sw282p3/swr3/play.mp3"),
-            dabDe("dab_de_hr3", "hr3", "7B", 190_640, "hr · Hessen", "Pop",
-                "https://dispatcher.rndfnk.com/hr/hr3/live/mp3/high"),
+            dabDe("dab_de_swr3", "SWR3", "9D", 208_064, "SWR BW · same as FM 92.2 SWR3", "Pop", SWR3_STREAM),
+            dabDe("dab_de_hr3", "hr3", "7B", 190_640, "hr Hessen · same as FM 89.3 hr3", "Pop", HR3_STREAM),
             dabDe("dab_de_radioeins", "radioeins", "7D", 194_064, "rbb · Berlin", "Alternative",
                 "https://dispatcher.rndfnk.com/rbb/radioeins/live/mp3/mid"),
         )
@@ -249,9 +270,27 @@ class StationCatalog(private val random: Random = Random.Default) {
         private fun cbs(stream: String) =
             StreamSource.Direct("https://m-aac.cbs.co.kr/mweb_$stream/_definst_/$stream.stream/playlist.m3u8")
 
+        const val HR3_STREAM = "https://dispatcher.rndfnk.com/hr/hr3/live/mp3/high"
+        const val SWR3_STREAM = "https://liveradio.swr.de/sw282p3/swr3/play.mp3"
+
+        /**
+         * German FM (UKW) stations that broadcast the same programme as their DAB+ service: hr3 Rhein-Main from
+         * Großer Feldberg/Taunus 89.3 MHz (hr3.de frequency list) and SWR3 from Sender Stuttgart 92.2 MHz
+         * (German Wikipedia). Same IP stream as the DAB entries; captions translate German.
+         */
+        val FM_DE = listOf(
+            Station("fm_de_hr3", Band.FM, "hr3", 89_300, null, "FM", "hr Hessen · same as DAB+ 7B hr3",
+                "ARD live stream · worldwide", "Pop", signal = 4, stream = StreamSource.Direct(HR3_STREAM), speechLanguage = "de-DE"),
+            Station("fm_de_swr3", Band.FM, "SWR3", 92_200, null, "FM", "SWR BW · same as DAB+ 9D SWR3",
+                "ARD live stream · worldwide", "Pop", signal = 4, stream = StreamSource.Direct(SWR3_STREAM), speechLanguage = "de-DE"),
+        )
+
+        /** FM / DAB(T-DMB) simulcast pairs kept in both preset lists. */
+        val AUTO_PRESETS = setOf("fm_de_hr3", "fm_de_swr3", "dab_de_hr3", "dab_de_swr3", "fm_kbs_cool", "dab_ukbs_music")
+
         /** Seoul metropolitan area frequencies, ascending. */
         val FM = listOf(
-            fm("fm_kbs_cool", "KBS 쿨FM", 89.1, "KBS 2FM", "Pop / K-Pop", StreamSource.Kbs(25)),
+            fm("fm_kbs_cool", "KBS 쿨FM", 89.1, "KBS 2FM · same as T-DMB U-KBS MUSIC", "Pop / K-Pop", StreamSource.Kbs(25)),
             fm("fm_mbc_fm4u", "MBC FM4U", 91.9, "MBC FM4U", "Music", StreamSource.Mbc("mfm")),
             fm("fm_kbs_classic", "KBS 클래식FM", 93.1, "KBS 1FM", "Classical", StreamSource.Kbs(24)),
             fm("fm_cbs_music", "CBS 음악FM", 93.9, "CBS Music FM", "Music", cbs("cbs939")),

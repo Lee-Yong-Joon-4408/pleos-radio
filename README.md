@@ -69,6 +69,17 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 
 선택하면 상태 칩 `LIVE · RF`와 송신탑 전파 배경으로 RF 수신을 표시하지만, 오디오는 원래 방송의 IP 스트림에서 가져옵니다(방송 정보 줄: "Virtual RF channel · audio relayed over IP"). 자막과 하이브리드 전환도 그대로 동작합니다.
 
+### FM ↔ DAB(T-DMB) 동시방송 채널
+같은 방송을 FM과 DAB/T-DMB로 동시에 내보내는 채널을 양쪽 밴드에 모두 두고, 프리셋에도 넣었습니다. 방송 제목 아래 줄에 "same as …"로 짝이 되는 채널을 표시합니다.
+
+| 방송 | FM | DAB / T-DMB | 근거 |
+| :-- | :-- | :-- | :-- |
+| KBS 쿨FM = U-KBS MUSIC | 89.1 MHz (수도권) | T-DMB CH 12B (한국 채널표 207.008 MHz), 표시 `T-DMB` · `RF` | 위키백과 「KBS 제2FM」: U-KBS MUSIC이 쿨FM 프로그램 대부분을 재전송(2026-05 편성표) |
+| hr3 (Rhein-Main) | 89.3 MHz (Großer Feldberg) | DAB+ 7B | hr3.de 주파수 목록 |
+| SWR3 | 92.2 MHz (Sender Stuttgart) | DAB+ 9D | 독일어 위키백과 「SWR3」 |
+
+U-KBS MUSIC은 RF(DMB) 수신으로 표시하고 소리는 같은 내용인 KBS 쿨FM IP 스트림에서 가져옵니다. 수도권 DMB의 MBC(올댓뮤직)·SBS V-Radio는 FM 동시방송이 아닌 자체 편성이라 넣지 않았습니다.
+
 ## 실시간 번역 자막 (DAB · DRM)
 재생 중인 오디오(ExoPlayer가 디코딩한 PCM)를 16 kHz 모노로 바꿔 약 6초 단위로 음성 인식 → 번역하고, 메인 화면 하단 5줄 패널에 최신 문장이 아래쪽에 오도록 표시합니다. 무음은 건너뛰고, 처리가 밀리면 가장 최근 구간만 처리합니다. 방송 언어: BBC en-GB, 독일 de-DE, AIR hi-IN / bn-IN / mr-IN / gu-IN.
 

@@ -12,10 +12,28 @@ class StationTest {
     /** Ordinary (IP) stations of a band, excluding the virtual RF twins. */
     private fun ip(band: Band) = catalog.stations(band).filterNot { it.virtualRf }
 
+    private fun koreanFm() = ip(Band.FM).filter { it.speechLanguage == "ko-KR" }
+
+    @Test fun hr3AndSwr3AreOnFmAndDabWithTheSameProgramme() {
+        val fm = catalog.stations(Band.FM)
+        val dab = catalog.stations(Band.DAB)
+        listOf("hr3" to "89.3 MHz", "SWR3" to "92.2 MHz").forEach { (name, freq) ->
+            val f = fm.single { it.name == name }
+            val d = dab.single { it.name == name }
+            assertEquals(freq, f.frequencyLabel)
+            assertEquals(d.stream, f.stream)
+            assertEquals(d.logoUrl, f.logoUrl)
+            assertEquals("de-DE", f.speechLanguage)
+            assertTrue(f.translateCaptions)
+            assertTrue(f.id in catalog.autoPresetIds(Band.FM))
+            assertTrue(d.id in catalog.autoPresetIds(Band.DAB))
+        }
+    }
+
     @Test fun eachBandHasThreeVirtualRfTwinsRelayingTheirIpStation() {
         Band.entries.forEach { band ->
             val all = catalog.stations(band)
-            val rf = all.filter { it.virtualRf }
+            val rf = all.filter { it.virtualRf && it.id.endsWith(Station.RF_SUFFIX) }
             assertEquals("$band", 3, rf.size)
             rf.forEach { twin ->
                 assertTrue(twin.id.endsWith(Station.RF_SUFFIX))
@@ -28,6 +46,23 @@ class StationTest {
                 assertTrue(!base.virtualRf)
             }
         }
+    }
+
+    @Test fun tdmbChannelSimulcastsKbsCoolFm() {
+        val ukbs = catalog.stations(Band.DAB).single { it.id == "dab_ukbs_music" }
+        val cool = catalog.stations(Band.FM).single { it.id == "fm_kbs_cool" }
+        assertEquals("T-DMB", ukbs.badge)
+        assertEquals("12B (KR)  207.008 MHz", ukbs.frequencyLabel)
+        assertEquals(cool.stream, ukbs.stream)
+        assertEquals(cool.logoUrl, ukbs.logoUrl)
+        assertTrue(ukbs.virtualRf)
+        // Both sides say they are the same broadcast, and both are kept in the preset lists.
+        assertTrue(cool.programme.contains("U-KBS MUSIC"))
+        assertTrue(ukbs.programme.contains("KBS 쿨FM"))
+        assertTrue(cool.id in catalog.autoPresetIds(Band.FM))
+        assertTrue(ukbs.id in catalog.autoPresetIds(Band.DAB))
+        assertEquals("ko-KR", ukbs.speechLanguage)
+        assertTrue(!ukbs.translateCaptions)
     }
 
     @Test fun dabIsTenBbcThenTenGermanServices() {
@@ -59,9 +94,9 @@ class StationTest {
     }
 
     @Test fun fmStationsAreSortedByFrequency() {
-        val freqs = ip(Band.FM).map { it.frequencyKhz }
+        val freqs = koreanFm().map { it.frequencyKhz }
         assertEquals(freqs.sorted(), freqs)
-        assertEquals("107.7 MHz", ip(Band.FM).last().frequencyLabel)
+        assertEquals("107.7 MHz", koreanFm().last().frequencyLabel)
     }
 
     @Test fun amStationsAreRealSeoulFrequencies() {
@@ -87,7 +122,7 @@ class StationTest {
     }
 
     @Test fun captionLanguagesPerBand() {
-        val dab = catalog.stations(Band.DAB)
+        val dab = ip(Band.DAB)
         assertTrue(dab.filter { it.name.startsWith("BBC") }.all { it.speechLanguage == "en-GB" })
         assertTrue(dab.filterNot { it.name.startsWith("BBC") }.all { it.speechLanguage == "de-DE" })
         val drm = catalog.stations(Band.DRM).associate { it.id to it.speechLanguage }
@@ -98,7 +133,8 @@ class StationTest {
         assertTrue((dab + catalog.stations(Band.DRM)).all { it.translateCaptions })
         // FM / AM: Korean speech shown as text without translation; ATSC has no captions.
         listOf(Band.FM, Band.AM).forEach { band ->
-            assertTrue(catalog.stations(band).all { it.speechLanguage == "ko-KR" && !it.translateCaptions })
+            assertTrue(catalog.stations(band).filterNot { it.id.startsWith("fm_de_") }
+                .all { it.speechLanguage == "ko-KR" && !it.translateCaptions })
         }
         assertTrue(catalog.stations(Band.ATSC).all { it.speechLanguage == null })
     }

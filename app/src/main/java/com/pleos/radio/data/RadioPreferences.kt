@@ -38,9 +38,10 @@ class RadioPreferences(context: Context) {
     fun transcriptEnabled(): Boolean = prefs.getBoolean(KEY_TRANSCRIPT, true)
     fun saveTranscriptEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_TRANSCRIPT, enabled).apply()
 
-    /** One-time migration: virtual RF presets added to existing preset lists. */
-    fun rfPresetsAdded(): Boolean = prefs.getBoolean(KEY_RF_PRESETS, false)
-    fun markRfPresetsAdded() = prefs.edit().putBoolean(KEY_RF_PRESETS, true).apply()
+    /** Ids of RF channels already auto-added to preset lists (each is added once, then left to the user). */
+    fun autoAddedPresets(): Set<String> = prefs.getStringSet(KEY_AUTO_PRESETS, null)?.toSet()
+        ?: if (prefs.getBoolean(KEY_RF_PRESETS, false)) LEGACY_RF_TWINS else emptySet()
+    fun saveAutoAddedPresets(ids: Set<String>) = prefs.edit().putStringSet(KEY_AUTO_PRESETS, ids).apply()
 
     fun captionEngine(): String? = prefs.getString(KEY_ENGINE, null)
     fun saveCaptionEngine(name: String) = prefs.edit().putString(KEY_ENGINE, name).apply()
@@ -59,7 +60,15 @@ class RadioPreferences(context: Context) {
         const val KEY_CLOUD_KEY = "google_cloud_api_key"
         const val KEY_ENGINE = "caption_engine"
         const val KEY_TRANSCRIPT = "transcript_enabled"
-        const val KEY_RF_PRESETS = "rf_presets_v1"
+        const val KEY_RF_PRESETS = "rf_presets_v1"   // legacy flag: the 15 RF twins were added
+        const val KEY_AUTO_PRESETS = "auto_added_presets"
+        val LEGACY_RF_TWINS = setOf(
+            "fm_kbs_cool_rf", "fm_mbc_fm4u_rf", "fm_sbs_power_rf",
+            "am_kbs_1radio_rf", "am_cbs_standard_rf", "am_febc_rf",
+            "dab_bbc_world_rf", "dab_de_dlf_rf", "dab_de_bayern3_rf",
+            "drm_air_delhi_a_rf", "drm_air_kolkata_a_rf", "drm_air_vb_delhi_rf",
+            "atsc_kbs1_rf", "atsc_kbs2_rf", "atsc_ebs1_rf",
+        )
         const val KEY_WHISPER_MODEL = "whisper_model"
     }
 }

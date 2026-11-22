@@ -186,7 +186,7 @@ private fun NowPlaying(ui: RadioUiState, onRetry: () -> Unit) {
             Spacer(Modifier.height(6.dp))
             Text(station.frequencyLabel, color = RadioColors.TextSecondary.copy(alpha = 0.8f), fontSize = 29.sp)
             Spacer(Modifier.height(18.dp))
-            Text(station.programme, color = RadioColors.Text, fontSize = 28.sp)
+            Text(station.programme, color = RadioColors.Text, fontSize = 28.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(4.dp))
             AnimatedContent(
                 targetState = station.infoLine(ui.labelIndex),
