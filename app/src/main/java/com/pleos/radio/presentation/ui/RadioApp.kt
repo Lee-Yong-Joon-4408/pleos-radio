@@ -26,8 +26,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SignalCellularAlt
@@ -106,8 +104,6 @@ fun RadioApp(vm: RadioViewModel) {
 private fun breadcrumb(section: Section, band: String): List<String> = when (section) {
     Section.RADIO -> listOf("Radio", band)
     Section.MEDIA -> listOf("Media")
-    Section.PHONE -> listOf("Phone")
-    Section.NAVIGATION -> listOf("Navigation")
     Section.SETTINGS -> listOf("Settings")
 }
 
@@ -128,15 +124,16 @@ fun ScaledDesign(designWidth: Dp, designHeight: Dp, content: @Composable () -> U
 
 // --- left navigation rail -----------------------------------------------------------------
 
+private val RAIL_ITEM_HEIGHT = 140.dp
+
 private data class RailItem(val section: Section, val label: String, val icon: ImageVector)
 
 private val RAIL_ITEMS = listOf(
     RailItem(Section.RADIO, "Radio", Icons.Filled.Radio),
     RailItem(Section.MEDIA, "Media", Icons.Filled.MusicNote),
-    RailItem(Section.PHONE, "Phone", Icons.Filled.Phone),
-    RailItem(Section.NAVIGATION, "Navigation", Icons.Filled.Navigation),
-    RailItem(Section.SETTINGS, "Settings", Icons.Filled.Settings),
 )
+
+private val SETTINGS_ITEM = RailItem(Section.SETTINGS, "Settings", Icons.Filled.Settings)
 
 @Composable
 private fun NavRail(selected: Section, onHome: () -> Unit, onSelect: (Section) -> Unit) {
@@ -146,9 +143,12 @@ private fun NavRail(selected: Section, onHome: () -> Unit, onSelect: (Section) -
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(RadioColors.Divider))
         Spacer(Modifier.height(18.dp))
+        // Radio and Media at the top, Settings pinned to the bottom.
         RAIL_ITEMS.forEach { item ->
-            RailButton(item, item.section == selected, Modifier.weight(1f)) { onSelect(item.section) }
+            RailButton(item, item.section == selected, Modifier.height(RAIL_ITEM_HEIGHT)) { onSelect(item.section) }
         }
+        Spacer(Modifier.weight(1f))
+        RailButton(SETTINGS_ITEM, SETTINGS_ITEM.section == selected, Modifier.height(RAIL_ITEM_HEIGHT)) { onSelect(Section.SETTINGS) }
         Spacer(Modifier.height(24.dp))
     }
 }

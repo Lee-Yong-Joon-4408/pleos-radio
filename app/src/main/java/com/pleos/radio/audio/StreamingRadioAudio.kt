@@ -9,9 +9,15 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.TeeAudioProcessor
 import com.pleos.radio.data.StreamResolver
 import com.pleos.radio.domain.Station
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,23 +30,40 @@ import kotlinx.coroutines.launch
  * ExoPlayer manages media audio focus itself (pause on loss, suspend on transient loss, duck).
  * Must be used from the main thread.
  */
+@OptIn(UnstableApi::class)
 class StreamingRadioAudio(
     context: Context,
     private val resolver: StreamResolver,
     private val scope: CoroutineScope,
+    tap: PcmTap? = null,
 ) {
     var onFocusLost: (() -> Unit)? = null
 
     private val _status = MutableStateFlow<AudioStatus>(AudioStatus.Idle)
     val status: StateFlow<AudioStatus> = _status.asStateFlow()
 
-    private val player = ExoPlayer.Builder(context)
+    // Optional PCM tap (live captions) inserted into ExoPlayer's audio processing chain.
+    private val renderers = object : DefaultRenderersFactory(context) {
+        override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink {
+            val builder = DefaultAudioSink.Builder(context).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            if (tap != null) builder.setAudioProcessors(arrayOf(TeeAudioProcessor(tap)))
+            return builder.build()
+        }
+    }
+
+    private val player = ExoPlayer.Builder(context, renderers)
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
             /* handleAudioFocus = */ true,
         )
         .setHandleAudioBecomingNoisy(true)
         .build()
+        .apply {
+            // Audio-only app: TV streams (ATSC band) are played without decoding their video track.
+            trackSelectionParameters = trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+                .build()
+        }
 
     private var station: Station? = null
     private var loadJob: Job? = null
@@ -91,9 +114,15 @@ class StreamingRadioAudio(
         player.stop()
         _status.value = AudioStatus.Connecting
         loadJob = scope.launch {
-            val url = runCatching { resolver.resolve(source) }
-                .onFailure { Log.w(TAG, "resolve failed for ${target.name}", it) }
-                .getOrNull()
+            // Cancellation (the user switched station/band) must propagate, not count as a failure.
+            val url = try {
+                resolver.resolve(source)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "resolve failed for ${target.name}", e)
+                null
+            }
             if (station?.id != target.id) return@launch
             if (url == null) {
                 _status.value = AudioStatus.Error("Cannot reach ${target.name} – check network")

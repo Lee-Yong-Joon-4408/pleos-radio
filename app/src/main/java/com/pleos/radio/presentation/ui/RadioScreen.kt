@@ -74,18 +74,23 @@ fun RadioScreen(ui: RadioUiState, vm: RadioViewModel) {
                 .height(470.dp)
         )
         Column(Modifier.fillMaxSize().padding(start = 52.dp, end = 34.dp)) {
-            Spacer(Modifier.height(22.dp))
-            Row(Modifier.fillMaxWidth().height(90.dp), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.height(6.dp))
+            Row(Modifier.fillMaxWidth().height(80.dp), verticalAlignment = Alignment.CenterVertically) {
                 BandTabs(ui.band, vm::selectBand, Modifier.weight(1f).fillMaxHeight())
                 Spacer(Modifier.width(24.dp))
                 StationListButton(vm::openStationList)
             }
-            Spacer(Modifier.height(52.dp))
+            Spacer(Modifier.height(12.dp))
             NowPlaying(ui, vm::retry)
-            PlaybackControls(ui, vm, Modifier.padding(start = 334.dp))
+            PlaybackControls(ui, vm, Modifier.padding(start = 310.dp))
             Spacer(Modifier.weight(1f))
+            // Live translation captions for foreign-language stations (DAB / DRM).
+            if (ui.caption.available) {
+                CaptionPanel(ui.caption, vm::setCaptionLanguage, onDownloadModel = { vm.downloadModel() })
+                Spacer(Modifier.height(8.dp))
+            }
             PresetBar(ui, vm)
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
@@ -158,8 +163,8 @@ private fun StationListButton(onClick: () -> Unit) {
 @Composable
 private fun NowPlaying(ui: RadioUiState, onRetry: () -> Unit) {
     val station = ui.current
-    Row(Modifier.height(272.dp)) {
-        StationArtwork(station, ui.band, ui.playing, Modifier.size(width = 282.dp, height = 272.dp))
+    Row(Modifier.height(250.dp)) {
+        StationArtwork(station, ui.band, ui.playing, Modifier.size(width = 258.dp, height = 250.dp))
         Spacer(Modifier.width(52.dp))
         if (station == null) {
             Text("No station – open Station List and scan", color = RadioColors.Muted, fontSize = 26.sp,
@@ -173,11 +178,11 @@ private fun NowPlaying(ui: RadioUiState, onRetry: () -> Unit) {
                 if (ui.playing) AudioStatusChip(ui.audioStatus, onRetry)
             }
             Spacer(Modifier.height(14.dp))
-            Text(station.name, color = RadioColors.Text, fontSize = 52.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+            Text(station.name, color = RadioColors.Text, fontSize = 48.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                 overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(6.dp))
             Text(station.frequencyLabel, color = RadioColors.TextSecondary.copy(alpha = 0.8f), fontSize = 29.sp)
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(18.dp))
             Text(station.programme, color = RadioColors.Text, fontSize = 28.sp)
             Spacer(Modifier.height(4.dp))
             AnimatedContent(
@@ -193,23 +198,23 @@ private fun NowPlaying(ui: RadioUiState, onRetry: () -> Unit) {
 
 @Composable
 private fun PlaybackControls(ui: RadioUiState, vm: RadioViewModel, modifier: Modifier) {
-    Row(modifier.height(100.dp), verticalAlignment = Alignment.CenterVertically) {
-        RoundControl(Icons.Filled.SkipPrevious, "Previous station", 80.dp) { vm.seek(-1) }
+    Row(modifier.height(88.dp), verticalAlignment = Alignment.CenterVertically) {
+        RoundControl(Icons.Filled.SkipPrevious, "Previous station", 72.dp) { vm.seek(-1) }
         Spacer(Modifier.width(52.dp))
         RoundControl(
             if (ui.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
             if (ui.playing) "Pause" else "Play",
-            100.dp,
+            88.dp,
             highlighted = true,
             onClick = vm::togglePlay,
         )
         Spacer(Modifier.width(52.dp))
-        RoundControl(Icons.Filled.SkipNext, "Next station", 80.dp) { vm.seek(+1) }
+        RoundControl(Icons.Filled.SkipNext, "Next station", 72.dp) { vm.seek(+1) }
         Spacer(Modifier.width(62.dp))
         RoundControl(
             if (ui.isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
             if (ui.isFavorite) "Remove favorite" else "Add favorite",
-            76.dp,
+            68.dp,
             tint = if (ui.isFavorite) RadioColors.Favorite else RadioColors.Text,
         ) { vm.toggleFavorite() }
     }
@@ -272,7 +277,7 @@ private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
 private fun PresetBar(ui: RadioUiState, vm: RadioViewModel) {
     val perPage = RadioLogic.PRESETS_PER_PAGE
     val first = ui.presetPage * perPage
-    Row(Modifier.fillMaxWidth().height(98.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.weight(1f).presetSwipe(onNext = { vm.changePresetPage(+1) }, onPrevious = { vm.changePresetPage(-1) }),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -343,11 +348,11 @@ private fun PresetChip(
             )
             .border(if (active) 2.dp else 1.dp, if (active) RadioColors.AccentBright else RadioColors.Divider, shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Save current station here")
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Column(Modifier.align(Alignment.CenterStart)) {
-            Text("$number", color = if (active) RadioColors.Text else RadioColors.Muted, fontSize = 23.sp)
-            Spacer(Modifier.height(6.dp))
+            Text("$number", color = if (active) RadioColors.Text else RadioColors.Muted, fontSize = 20.sp)
+            Spacer(Modifier.height(2.dp))
             Text(
                 station?.name ?: "Empty",
                 color = if (station == null) RadioColors.Muted.copy(alpha = 0.6f) else RadioColors.TextSecondary,

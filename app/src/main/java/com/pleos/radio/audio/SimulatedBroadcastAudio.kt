@@ -18,7 +18,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Stand-in for the broadcast tuner's audio path on bands without a real stream (ATSC).
+ * Stand-in for the broadcast tuner's audio path, used only for stations without a real stream
+ * (none in the current catalog; kept as the fallback for a future HAL-backed or offline list).
  *
  * Generates a soft, station-specific chord pad (so play/pause/tune are audible on the emulator),
  * a short burst of static when retuning, and analogue-style hiss on FM/AM/DRM proportional to the

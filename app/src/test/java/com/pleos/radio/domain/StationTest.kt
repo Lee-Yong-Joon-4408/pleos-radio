@@ -31,12 +31,9 @@ class StationTest {
         assertEquals(listOf("FM", "AM", "DAB", "DRM", "ATSC"), Band.entries.map { it.label })
     }
 
-    @Test fun onlyAtscIsSimulated() {
-        listOf(Band.FM, Band.AM, Band.DAB, Band.DRM).forEach { band ->
+    @Test fun everyStationHasARealStream() {
+        Band.entries.forEach { band ->
             assertTrue(catalog.stations(band).all { it.stream != null })
-        }
-        listOf(Band.ATSC).forEach { band ->
-            assertTrue(catalog.stations(band).all { it.stream == null })
         }
     }
 
@@ -61,16 +58,33 @@ class StationTest {
     }
 
     @Test fun realStationsHaveHttpsLogosExceptNdr2() {
-        val real = listOf(Band.FM, Band.AM, Band.DAB, Band.DRM).flatMap { catalog.stations(it) }
+        val real = Band.entries.flatMap { catalog.stations(it) }
         val missing = real.filter { it.logoUrl == null }.map { it.id }
         assertEquals(listOf("dab_de_ndr2"), missing)
         assertTrue(real.mapNotNull { it.logoUrl }.all { it.startsWith("https://") })
-        assertTrue(catalog.stations(Band.ATSC).all { it.logoUrl == null })
         assertTrue(catalog.scan(Band.FM).all { it.logoUrl != null })
     }
 
-    @Test fun atscShowsVirtualChannel() {
-        assertEquals("CH 14-1  479 MHz", catalog.stations(Band.ATSC).first().frequencyLabel)
+    @Test fun dabAndDrmCarryBroadcastLanguageForCaptionsKoreanBandsDoNot() {
+        val dab = catalog.stations(Band.DAB)
+        assertTrue(dab.filter { it.name.startsWith("BBC") }.all { it.speechLanguage == "en-GB" })
+        assertTrue(dab.filterNot { it.name.startsWith("BBC") }.all { it.speechLanguage == "de-DE" })
+        val drm = catalog.stations(Band.DRM).associate { it.id to it.speechLanguage }
+        assertEquals("mr-IN", drm["drm_air_mumbai_b"])
+        assertEquals("bn-IN", drm["drm_air_kolkata_a"])
+        assertEquals("gu-IN", drm["drm_air_rajkot"])
+        assertEquals("hi-IN", drm["drm_air_lucknow"])
+        listOf(Band.FM, Band.AM, Band.ATSC).forEach { band ->
+            assertTrue(catalog.stations(band).all { it.speechLanguage == null })
+        }
+    }
+
+    @Test fun atscIsKoreanTerrestrialTvWithVirtualAndRfChannel() {
+        val atsc = catalog.stations(Band.ATSC)
+        assertEquals(listOf("KBS 2TV", "KBS 1TV", "EBS 1TV", "EBS 2TV"), atsc.map { it.name })
+        assertEquals("CH 9-1 (RF 52)  701 MHz", atsc.first { it.id == "atsc_kbs1" }.frequencyLabel)
+        assertEquals("CH 10-2 (RF 18)  497 MHz", atsc.first { it.id == "atsc_ebs2" }.frequencyLabel)
+        assertEquals(listOf("ATSC 3.0", "ATSC 3.0", "ATSC", "ATSC"), atsc.map { it.badge })
     }
 
     @Test fun amAndDrmUseKhz() {
@@ -79,8 +93,9 @@ class StationTest {
     }
 
     @Test fun infoLineStartsWithSloganAndCycles() {
-        val s = catalog.stations(Band.ATSC).first()
-        assertEquals("Round-the-clock UHD news audio", s.infoLine(0))
+        val s = Station("t", Band.FM, "Test", 99_900, badge = "FM", programme = "P", slogan = "Slogan", genre = "G",
+            dynamicLabels = listOf("Now: Song A", "Next: Song B"))
+        assertEquals("Slogan", s.infoLine(0))
         assertEquals(s.dynamicLabels[0], s.infoLine(1))
         assertEquals(s.infoLine(0), s.infoLine(s.dynamicLabels.size + 1))
     }

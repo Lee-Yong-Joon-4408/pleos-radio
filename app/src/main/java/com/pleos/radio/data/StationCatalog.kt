@@ -10,9 +10,9 @@ import kotlin.random.Random
  *
  * Third-party Pleos Connect / AAOS apps cannot open the vehicle's broadcast-radio HAL
  * (`android.hardware.radio` is a system API). FM and AM therefore list the real Seoul-area
- * stations, DAB the BBC National DAB lineup plus German DAB+ stations and DRM All India Radio's DRM
- * transmitters, each playing the broadcaster's official internet stream ([StreamSource]); ATSC uses
- * a fixed simulated service list. A HAL-backed implementation can replace this class later.
+ * stations, DAB the BBC National DAB lineup plus German DAB+ stations, DRM All India Radio's DRM
+ * transmitters and ATSC Korea's public terrestrial TV channels, each playing the broadcaster's
+ * official internet stream ([StreamSource]). A HAL-backed implementation can replace this class later.
  */
 class StationCatalog(private val random: Random = Random.Default) {
 
@@ -31,7 +31,7 @@ class StationCatalog(private val random: Random = Random.Default) {
     /** Simulated band scan: same services, freshly measured signal strength. */
     fun scan(band: Band): List<Station> = stations(band).map { s ->
         if (s.stream != null) s // internet simulcast: no RF signal to measure
-        else s.copy(signal = random.nextInt(if (band == Band.ATSC) 2 else 1, 5))
+        else s.copy(signal = random.nextInt(1, 5))
     }
 
     private companion object {
@@ -102,6 +102,11 @@ class StationCatalog(private val random: Random = Random.Default) {
             "drm_air_kolkata_b" to AIR_LOGO + "RADIO_480353.jpg",
             "drm_air_mumbai_a" to AIR_LOGO + "sammumbai.jpg",
             "drm_air_vb_delhi" to AIR_LOGO + "RADIO_624699.jpeg",
+            // Terrestrial TV
+            "atsc_kbs1" to "https://padmin.static.kbs.co.kr/live/2025/2/3/1738538621612_433742.png",
+            "atsc_kbs2" to "https://padmin.static.kbs.co.kr/live/2025/2/3/1738538621669_433753.png",
+            "atsc_ebs1" to "https://m.ebs.co.kr/common/img/ebs_logo.png",
+            "atsc_ebs2" to "https://m.ebs.co.kr/common/img/ebs_logo.png",
         )
 
         /** White-on-transparent logos. */
@@ -109,13 +114,14 @@ class StationCatalog(private val random: Random = Random.Default) {
 
         fun dab(id: String, name: String, programme: String, genre: String, stream: StreamSource,
                 slogan: String = "BBC live stream · UK only") =
-            Station(id, Band.DAB, name, 225_648, "12B", "DAB", programme, slogan, genre, signal = 4, stream = stream)
+            Station(id, Band.DAB, name, 225_648, "12B", "DAB", programme, slogan, genre, signal = 4, stream = stream,
+                speechLanguage = "en-GB")
 
         /** German DAB+ service: block + centre frequency of its home ensemble. */
         fun dabDe(id: String, name: String, block: String, khz: Int, programme: String, genre: String, streamUrl: String,
                   slogan: String = "ARD live stream · worldwide") =
             Station(id, Band.DAB, name, khz, block, "DAB+", programme, slogan, genre, signal = 4,
-                stream = StreamSource.Direct(streamUrl))
+                stream = StreamSource.Direct(streamUrl), speechLanguage = "de-DE")
 
         /** BBC's own HLS live stream for a domestic station; the BBC CDN only serves it to UK addresses. */
         fun bbcUk(id: String) = StreamSource.Direct(
@@ -129,11 +135,12 @@ class StationCatalog(private val random: Random = Random.Default) {
         /** Prasar Bharati stream hosts: CloudFront paths ("airdelhi06/air006") or full wavespb URLs. */
         const val WAVES = "https://radio.wavespb.com/live/"
 
-        fun drm(id: String, name: String, khz: Int, programme: String, genre: String, stream: String, pureDrm: Boolean = false) =
+        fun drm(id: String, name: String, khz: Int, programme: String, genre: String, stream: String, pureDrm: Boolean = false,
+                language: String = "hi-IN") =
             Station(
                 id, Band.DRM, name, khz, null, "DRM", "AIR $programme",
                 if (pureDrm) "Pure DRM · Akashvani live stream" else "Akashvani live stream · worldwide",
-                genre, signal = 4,
+                genre, signal = 4, speechLanguage = language,
                 stream = StreamSource.Direct(
                     if (stream.startsWith("https://")) stream
                     else "https://d3r9rhourdc02u.cloudfront.net/assets/radio/${stream.substringBefore('/')}/${stream.substringAfter('/')}_Auto.m3u8"
@@ -144,8 +151,12 @@ class StationCatalog(private val random: Random = Random.Default) {
             Station(id, Band.FM, name, Math.round(mhz * 1000).toInt(), null, "FM", programme,
                 "Live internet simulcast", genre, signal = 4, stream = stream)
 
-        fun atsc(id: String, name: String, channel: String, mhz: Int, programme: String, slogan: String, genre: String, vararg dls: String, signal: Int = 4) =
-            Station(id, Band.ATSC, name, mhz * 1000, channel, "ATSC 3.0", programme, slogan, genre, dls.toList(), signal)
+        /** UHF channel centre frequency (Korea uses the North American 6 MHz plan: RF 14 = 473 MHz). */
+        fun uhfCentreKhz(rf: Int) = (473 + (rf - 14) * 6) * 1000
+
+        fun atsc(id: String, name: String, virtual: String, rf: Int, badge: String, programme: String, genre: String, stream: StreamSource) =
+            Station(id, Band.ATSC, name, uhfCentreKhz(rf), "$virtual (RF $rf)", badge, programme,
+                "Live TV audio · official stream", genre, signal = 4, stream = stream)
 
         fun am(id: String, name: String, khz: Int, programme: String, genre: String, stream: StreamSource,
                slogan: String = "Live internet simulcast") =
@@ -202,15 +213,16 @@ class StationCatalog(private val random: Random = Random.Default) {
          * Streams are Prasar Bharati's official live streams (24 h; simulcast transmitters run DRM part-time).
          */
         val DRM = listOf(
-            drm("drm_air_mumbai_b", "AIR Mumbai Asmita", 549, "Mumbai B · Asmita", "Marathi", "airmum04/air052"),
+            drm("drm_air_mumbai_b", "AIR Mumbai Asmita", 549, "Mumbai B · Asmita", "Marathi", "airmum04/air052", language = "mr-IN"),
             drm("drm_air_patna", "AIR Patna", 612, "Patna", "Hindi / Bhojpuri", WAVES + "c398958b3874b441/c398958b3874b441.m3u8"),
-            drm("drm_air_kolkata_a", "AIR Kolkata Geetanjali", 648, "Kolkata A · Geetanjali", "Bengali", "airkol01/air065"),
+            drm("drm_air_kolkata_a", "AIR Kolkata Geetanjali", 648, "Kolkata A · Geetanjali", "Bengali", "airkol01/air065", language = "bn-IN"),
             drm("drm_air_lucknow", "AIR Lucknow", 738, "Lucknow", "Hindi", WAVES + "75c01e54cb46ad29/75c01e54cb46ad29.m3u8"),
             drm("drm_air_vb_chennai", "Vividh Bharati", 783, "Chennai C · Vividh Bharati", "Hindi film music",
                 WAVES + "146ed6ec6dea5a24/146ed6ec6dea5a24.m3u8", pureDrm = true),
-            drm("drm_air_rajkot", "AIR Rajkot", 801, "Rajkot", "Gujarati", WAVES + "a70ba921067c93ce/a70ba921067c93ce.m3u8"),
+            drm("drm_air_rajkot", "AIR Rajkot", 801, "Rajkot", "Gujarati", WAVES + "a70ba921067c93ce/a70ba921067c93ce.m3u8",
+                language = "gu-IN"),
             drm("drm_air_delhi_a", "AIR Delhi Indraprastha", 810, "New Delhi A · Indraprastha", "Hindi / English", "airdelhi06/air006"),
-            drm("drm_air_kolkata_b", "AIR Kolkata Sanchayita", 999, "Kolkata B · Sanchayita", "Bengali", "airkol02/air066"),
+            drm("drm_air_kolkata_b", "AIR Kolkata Sanchayita", 999, "Kolkata B · Sanchayita", "Bengali", "airkol02/air066", language = "bn-IN"),
             drm("drm_air_mumbai_a", "AIR Mumbai Samvadita", 1_044, "Mumbai A · Samvadita", "Hindi / English", "airmum03/air051",
                 pureDrm = true),
             drm("drm_air_vb_delhi", "Vividh Bharati Delhi", 1_368, "New Delhi C · Vividh Bharati", "Hindi film music",
@@ -236,20 +248,18 @@ class StationCatalog(private val random: Random = Random.Default) {
             fm("fm_sbs_power", "SBS 파워FM", 107.7, "SBS Power FM", "Pop / K-Pop", StreamSource.Sbs("powerpc/powerfm")),
         )
 
-        /** Simulated ATSC 3.0 audio services (virtual channel, RF centre frequency). */
+        /**
+         * Korean terrestrial TV (Seoul head-office channels, per the stations' Korean Wikipedia infoboxes):
+         * KBS on its ATSC 3.0 UHD channels, EBS on ATSC 1.0 RF 18. Plays the audio of each broadcaster's
+         * official live TV stream. MBC and SBS do not allow third-party access to their live TV streams.
+         */
         val ATSC = listOf(
-            atsc("atsc_news", "UHD News 24", "14-1", 479, "News Now", "Round-the-clock UHD news audio", "News",
-                "Live: evening headlines", "Weather: rain moving east tonight"),
-            atsc("atsc_music", "UHD Music", "16-1", 491, "Concert Live", "Live concerts in immersive audio", "Music",
-                "Now playing: Seoul Philharmonic – Dvořák 9"),
-            atsc("atsc_sports", "UHD Sports", "18-1", 503, "Match Day", "Live commentary for the road", "Sports",
-                "Football: 1–0, 63rd minute", signal = 3),
-            atsc("atsc_drama", "UHD Drama", "21-1", 521, "Prime Drama", "Listen to tonight's drama", "Drama",
-                "Episode 12 – The Last Letter", signal = 3),
-            atsc("atsc_kids", "UHD Kids", "23-1", 533, "Story Time", "Cartoons and songs for kids", "Kids",
-                "Now: Little Dino Adventures", signal = 2),
-            atsc("atsc_docs", "UHD Docs", "25-1", 545, "Planet Earth Korea", "Documentaries in sound", "Documentary",
-                "Today: tidal flats of the west coast", signal = 3),
+            atsc("atsc_kbs2", "KBS 2TV", "7-1", 56, "ATSC 3.0", "KBS 2TV · UHD", "Entertainment / Drama", StreamSource.Kbs(12)),
+            atsc("atsc_kbs1", "KBS 1TV", "9-1", 52, "ATSC 3.0", "KBS 1TV · UHD", "News / Documentary", StreamSource.Kbs(11)),
+            atsc("atsc_ebs1", "EBS 1TV", "10-1", 18, "ATSC", "EBS 1TV · HD", "Education / Documentary",
+                StreamSource.Direct("https://ebsonair.ebs.co.kr/ebs1familypc/familypc1m/playlist.m3u8")),
+            atsc("atsc_ebs2", "EBS 2TV", "10-2", 18, "ATSC", "EBS 2TV · HD", "Education",
+                StreamSource.Direct("https://ebsonair.ebs.co.kr/ebs2familypc/familypc1m/playlist.m3u8")),
         )
 
         /** Seoul-area medium-wave stations (kHz, ascending) with their broadcaster's live stream. */

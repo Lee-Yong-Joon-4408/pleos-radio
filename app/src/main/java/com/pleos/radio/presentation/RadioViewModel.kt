@@ -3,7 +3,13 @@ package com.pleos.radio.presentation
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.pleos.radio.BuildConfig
 import com.pleos.radio.RadioApplication
+import com.pleos.radio.data.translate.WhisperModelStore
+import com.pleos.radio.domain.caption.CaptionEngineType
+import com.pleos.radio.domain.caption.CaptionLanguage
+import com.pleos.radio.domain.caption.WhisperModel
+import com.pleos.radio.domain.caption.CaptionState
 import com.pleos.radio.audio.AudioStatus
 import com.pleos.radio.domain.Band
 import com.pleos.radio.domain.RadioLogic
@@ -13,11 +19,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Left navigation rail destinations. Radio is the main (launch) screen. */
-enum class Section { RADIO, MEDIA, PHONE, NAVIGATION, SETTINGS }
+enum class Section { RADIO, MEDIA, SETTINGS }
 
 data class RadioUiState(
     val section: Section = Section.RADIO,
@@ -35,6 +43,13 @@ data class RadioUiState(
     val labelIndex: Int = 0,
     val audioEnabled: Boolean = true,
     val audioStatus: AudioStatus = AudioStatus.Idle,
+    val captionLanguage: CaptionLanguage = CaptionLanguage.KOREAN,
+    val caption: CaptionState = CaptionState(),
+    /** Where the Google Cloud key comes from: "settings", "build" (local.properties) or null (none). */
+    val apiKeySource: String? = null,
+    val captionEngine: CaptionEngineType = CaptionEngineType.ON_DEVICE,
+    val whisperModel: WhisperModel = WhisperModel.BASE,
+    val modelStates: Map<WhisperModel, WhisperModelStore.State> = emptyMap(),
     val message: String? = null,
 ) {
     val isFavorite: Boolean get() = current?.id in favorites
@@ -48,6 +63,9 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     private val catalog = container.catalog
     private val prefs = container.preferences
     private val audio = container.audio
+    private val translator = container.translator
+    private val models = container.whisperModels
+    private val apiKey = MutableStateFlow(effectiveApiKey())
 
     private val stationsByBand = Band.entries.associateWith { catalog.stations(it) }.toMutableMap()
     private val presetsByBand = Band.entries.associateWith { band ->
@@ -55,7 +73,16 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         RadioLogic.restorePresets(prefs.presets(band), stations.map { it.id }.toSet(), RadioLogic.defaultPresets(stations))
     }.toMutableMap()
 
-    private val _ui = MutableStateFlow(RadioUiState(favorites = prefs.favorites(), audioEnabled = prefs.audioEnabled()))
+    private val _ui = MutableStateFlow(
+        RadioUiState(
+            favorites = prefs.favorites(),
+            audioEnabled = prefs.audioEnabled(),
+            captionLanguage = CaptionLanguage.fromName(prefs.captionLanguage()),
+            apiKeySource = apiKeySource(),
+            captionEngine = CaptionEngineType.fromName(prefs.captionEngine()),
+            whisperModel = WhisperModel.fromName(prefs.whisperModel()),
+        )
+    )
     val ui: StateFlow<RadioUiState> = _ui.asStateFlow()
 
     private var scanJob: Job? = null
@@ -66,6 +93,24 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         showBand(prefs.lastBand() ?: Band.entries.first())
         syncAudio()
         viewModelScope.launch { audio.status.collect { s -> _ui.update { it.copy(audioStatus = s) } } }
+        // Live captions: push station / play state / language / key to the translator, show its output.
+        viewModelScope.launch {
+            combine(_ui, apiKey, models.states) { s, key, states ->
+                LiveTranslator.Config(
+                    station = s.current,
+                    playing = s.playing,
+                    target = s.captionLanguage,
+                    engine = s.captionEngine,
+                    apiKey = key,
+                    model = s.whisperModel,
+                    modelState = states[s.whisperModel] ?: WhisperModelStore.State.Missing,
+                )
+            }
+                .distinctUntilChanged()
+                .collect(translator::update)
+        }
+        viewModelScope.launch { translator.state.collect { c -> _ui.update { it.copy(caption = c) } } }
+        viewModelScope.launch { models.states.collect { m -> _ui.update { it.copy(modelStates = m) } } }
         // Rotate the dynamic label (DLS / radiotext) like a real receiver.
         viewModelScope.launch {
             while (true) {
@@ -220,6 +265,44 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         MediaKey.PAUSE -> if (_ui.value.playing) togglePlay() else Unit
     }
 
+    fun setCaptionLanguage(language: CaptionLanguage) {
+        _ui.update { it.copy(captionLanguage = language) }
+        prefs.saveCaptionLanguage(language.name)
+    }
+
+    fun setCaptionEngine(engine: CaptionEngineType) {
+        _ui.update { it.copy(captionEngine = engine) }
+        prefs.saveCaptionEngine(engine.name)
+    }
+
+    fun setWhisperModel(model: WhisperModel) {
+        _ui.update { it.copy(whisperModel = model) }
+        prefs.saveWhisperModel(model.name)
+    }
+
+    /** Downloads the selected (or given) speech model for on-device captions. */
+    fun downloadModel(model: WhisperModel = _ui.value.whisperModel) = models.download(model)
+
+    fun deleteModel(model: WhisperModel) {
+        models.delete(model)
+        flash("${model.label.substringBefore(" ·")} model deleted")
+    }
+
+    fun saveApiKey(key: String) {
+        prefs.saveCloudApiKey(key)
+        apiKey.value = effectiveApiKey()
+        _ui.update { it.copy(apiKeySource = apiKeySource()) }
+        flash(if (key.isBlank()) "Google Cloud API key cleared" else "Google Cloud API key saved")
+    }
+
+    private fun effectiveApiKey(): String = prefs.cloudApiKey().ifBlank { BuildConfig.GOOGLE_CLOUD_API_KEY }
+
+    private fun apiKeySource(): String? = when {
+        prefs.cloudApiKey().isNotBlank() -> "settings"
+        BuildConfig.GOOGLE_CLOUD_API_KEY.isNotBlank() -> "build"
+        else -> null
+    }
+
     fun dismissMessage() = _ui.update { it.copy(message = null) }
 
     private fun flash(text: String) {
@@ -243,6 +326,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         // Audio is app-scoped (it survives Activity recreation), so only stop it here.
         audio.onFocusLost = null
         audio.stop()
+        translator.update(LiveTranslator.Config())
     }
 
     private companion object {
