@@ -29,13 +29,21 @@ Java_com_pleos_radio_data_translate_WhisperNative_free(JNIEnv *, jobject, jlong 
     if (handle != 0) whisper_free(reinterpret_cast<whisper_context *>(handle));
 }
 
+static jbyteArray toBytes(JNIEnv *env, const std::string &s) {
+    jbyteArray out = env->NewByteArray((jsize) s.size());
+    if (out != nullptr && !s.empty()) env->SetByteArrayRegion(out, 0, (jsize) s.size(), reinterpret_cast<const jbyte *>(s.data()));
+    return out;
+}
+
 // samples: 16 kHz mono float PCM in [-1, 1]. language: ISO-639-1 ("de", "hi", ...).
 // translate=true makes Whisper output English regardless of the spoken language.
-JNIEXPORT jstring JNICALL
-Java_com_pleos_radio_data_translate_WhisperNative_transcribe(JNIEnv *env, jobject, jlong handle, jfloatArray samples,
+// Returns raw UTF-8 bytes: Whisper tokens can split a multi-byte character, and NewStringUTF aborts the
+// process on invalid (Modified) UTF-8, so decoding happens leniently on the Kotlin side.
+JNIEXPORT jbyteArray JNICALL
+Java_com_pleos_radio_data_translate_WhisperNative_transcribeUtf8(JNIEnv *env, jobject, jlong handle, jfloatArray samples,
                                                               jstring language, jboolean translate, jint threads) {
     auto *ctx = reinterpret_cast<whisper_context *>(handle);
-    if (ctx == nullptr) return env->NewStringUTF("");
+    if (ctx == nullptr) return toBytes(env, "");
 
     const char *lang = env->GetStringUTFChars(language, nullptr);
     std::string langCopy(lang);
@@ -65,7 +73,7 @@ Java_com_pleos_radio_data_translate_WhisperNative_transcribe(JNIEnv *env, jobjec
     env->ReleaseFloatArrayElements(samples, data, JNI_ABORT);
     if (rc != 0) {
         LOGW("whisper_full failed: %d", rc);
-        return env->NewStringUTF("");
+        return toBytes(env, "");
     }
 
     std::string text;
@@ -74,7 +82,7 @@ Java_com_pleos_radio_data_translate_WhisperNative_transcribe(JNIEnv *env, jobjec
         const char *seg = whisper_full_get_segment_text(ctx, i);
         if (seg != nullptr) text += seg;
     }
-    return env->NewStringUTF(text.c_str());
+    return toBytes(env, text);
 }
 
 JNIEXPORT jstring JNICALL
