@@ -27,6 +27,7 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 | 상단 바 | Radio › 밴드 경로, 실시간 시계 |
 | 실시간 받아쓰기 (FM·AM) | 한국어 방송의 음성을 번역 없이 그대로 텍스트로 같은 5줄 패널에 표시(On/Off 메뉴). 엔진은 번역 자막과 동일 |
 | 수신 경로 배경 · 하이브리드 전환 | 재생 중 배경에 수신 경로를 애니메이션으로 표시: IP망(인터넷 스트림)은 데이터 패킷이 네트워크를 거쳐 수신기로 들어오는 모습, 방송망(튜너)은 송신탑에서 전파가 퍼지는 모습. IP 스트림이 끊기면 방송망으로 자동 전환하고 복구되면 IP로 복귀 |
+| 가상 RF 채널 (밴드별 3개) | 프리셋에 RF망으로 수신하는 가상 채널(`· RF`)을 추가. 선택하면 `LIVE · RF`와 전파 배경으로 RF 수신을 표시하고, 오디오는 같은 방송의 IP 스트림에서 가져옴 |
 | 좌측 레일 | Home(라디오로 복귀), Radio, Media(미니 플레이어), Settings(자막 엔진·음성 모델·자막 언어·FM/AM 받아쓰기·프리셋 초기화) |
 | 스티어링 휠 미디어 키 | 다음/이전/재생·정지 |
 
@@ -54,6 +55,19 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 * **방송망:** 튜너. IP 스트림이 네트워크 문제로 끊기면(ExoPlayer 재시도 2회 후) 같은 방송을 튜너로 자동 전환하고 `LIVE · Broadcast · IP lost`와 송신탑에서 전파가 퍼지는 애니메이션을 보여 줍니다. 20초마다 IP 스트림에 접속해 보고, 되면 IP로 복귀합니다. 지역 제한(BBC 국내 방송 403)은 네트워크 장애가 아니므로 전환하지 않습니다.
 * 서드파티 앱은 차량의 방송 라디오 HAL을 쓸 수 없어 현재 튜너는 `SimulatedBroadcastAudio`(합성 톤)입니다. HAL 기반 튜너로 교체하면 실제 방송 수신으로 바뀝니다.
 * 에뮬레이터에서 비행기 모드로 확인: 네트워크 차단 약 12초 후 방송망 전환, 복구 약 18초 후 IP 복귀.
+
+### 가상 RF 채널
+밴드마다 3개씩, 기존 방송을 RF망으로 수신하는 것처럼 보여 주는 가상 채널이 있습니다(이름 끝 `· RF`, 프리셋 빈 칸에 자동 추가).
+
+| 밴드 | 가상 RF 채널 |
+| :-- | :-- |
+| FM | KBS 쿨FM · RF, MBC FM4U · RF, SBS 파워FM · RF |
+| AM | KBS 1라디오 · RF, CBS 표준FM · RF, 극동방송 · RF |
+| DAB | BBC World Service · RF, Deutschlandfunk · RF, Bayern 3 · RF |
+| DRM | AIR Delhi Indraprastha · RF, AIR Kolkata Geetanjali · RF, Vividh Bharati Delhi · RF |
+| ATSC | KBS 1TV · RF, KBS 2TV · RF, EBS 1TV · RF |
+
+선택하면 상태 칩 `LIVE · RF`와 송신탑 전파 배경으로 RF 수신을 표시하지만, 오디오는 원래 방송의 IP 스트림에서 가져옵니다(방송 정보 줄: "Virtual RF channel · audio relayed over IP"). 자막과 하이브리드 전환도 그대로 동작합니다.
 
 ## 실시간 번역 자막 (DAB · DRM)
 재생 중인 오디오(ExoPlayer가 디코딩한 PCM)를 16 kHz 모노로 바꿔 약 6초 단위로 음성 인식 → 번역하고, 메인 화면 하단 5줄 패널에 최신 문장이 아래쪽에 오도록 표시합니다. 무음은 건너뛰고, 처리가 밀리면 가장 최근 구간만 처리합니다. 방송 언어: BBC en-GB, 독일 de-DE, AIR hi-IN / bn-IN / mr-IN / gu-IN.

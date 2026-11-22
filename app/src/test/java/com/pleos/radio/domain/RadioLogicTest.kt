@@ -60,6 +60,13 @@ class RadioLogicTest {
         assertEquals(fallback, RadioLogic.restorePresets(listOf("old_1", "old_2", null), known, fallback))
     }
 
+    @Test fun addToEmptySlotsFillsGapsOnceAndSkipsPresentIds() {
+        val presets = listOf("a", null, "b", null)
+        assertEquals(listOf("a", "x", "b", "y"), RadioLogic.addToEmptySlots(presets, listOf("x", "y", "z")))
+        assertEquals(listOf("a", null, "b", null), RadioLogic.addToEmptySlots(presets, listOf("a", "b")))
+        assertEquals(listOf("a", "b"), RadioLogic.addToEmptySlots(listOf("a", "b"), listOf("c")))
+    }
+
     @Test fun favoritesToggleAndFilter() {
         val favs = RadioLogic.toggle(emptySet(), "dab_bbc_world")
         assertTrue("dab_bbc_world" in favs)

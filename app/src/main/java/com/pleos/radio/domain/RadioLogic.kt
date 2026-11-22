@@ -22,6 +22,18 @@ object RadioLogic {
     fun assignPreset(presets: List<String?>, slot: Int, stationId: String): List<String?> =
         if (slot !in presets.indices) presets else presets.toMutableList().also { it[slot] = stationId }
 
+    /** Puts each of [ids] not already present into the first empty slots (unchanged when there is no room). */
+    fun addToEmptySlots(presets: List<String?>, ids: List<String>): List<String?> {
+        val out = presets.toMutableList()
+        for (id in ids) {
+            if (id in out) continue
+            val slot = out.indexOfFirst { it == null }
+            if (slot < 0) break
+            out[slot] = id
+        }
+        return out
+    }
+
     fun toggle(set: Set<String>, id: String): Set<String> = if (id in set) set - id else set + id
 
     fun pageCount(slots: Int = PRESET_SLOTS, perPage: Int = PRESETS_PER_PAGE): Int = (slots + perPage - 1) / perPage

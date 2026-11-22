@@ -17,15 +17,16 @@ import kotlin.random.Random
 class StationCatalog(private val random: Random = Random.Default) {
 
     fun stations(band: Band): List<Station> = stationsWithoutLogos(band).map { s ->
-        s.copy(logoUrl = LOGOS[s.id], logoOnDark = s.id in LOGOS_ON_DARK)
+        // Virtual RF channels reuse the logo of the station they relay.
+        s.copy(logoUrl = LOGOS[s.baseId], logoOnDark = s.baseId in LOGOS_ON_DARK)
     }
 
     private fun stationsWithoutLogos(band: Band): List<Station> = when (band) {
-        Band.DAB -> DAB
-        Band.DRM -> DRM
-        Band.FM -> FM
-        Band.ATSC -> ATSC
-        Band.AM -> AM
+        Band.DAB -> DAB + rfTwins(DAB, "dab_bbc_world", "dab_de_dlf", "dab_de_bayern3")
+        Band.DRM -> DRM + rfTwins(DRM, "drm_air_delhi_a", "drm_air_kolkata_a", "drm_air_vb_delhi")
+        Band.FM -> FM + rfTwins(FM, "fm_kbs_cool", "fm_mbc_fm4u", "fm_sbs_power")
+        Band.ATSC -> ATSC + rfTwins(ATSC, "atsc_kbs1", "atsc_kbs2", "atsc_ebs1")
+        Band.AM -> AM + rfTwins(AM, "am_kbs_1radio", "am_cbs_standard", "am_febc")
     }
 
     /** Simulated band scan: same services, freshly measured signal strength. */
@@ -35,6 +36,20 @@ class StationCatalog(private val random: Random = Random.Default) {
     }
 
     private companion object {
+        /**
+         * Virtual RF-network channels (three per band): the same services presented as received over the RF
+         * broadcast network, while the audio is actually relayed from the station's IP stream.
+         */
+        fun rfTwins(list: List<Station>, vararg ids: String): List<Station> = ids.map { id ->
+            val s = list.first { it.id == id }
+            s.copy(
+                id = s.id + Station.RF_SUFFIX,
+                name = "${s.name} · RF",
+                slogan = "Virtual RF channel · audio relayed over IP",
+                virtualRf = true,
+            )
+        }
+
         private const val KBS_LOGO = "https://padmin.static.kbs.co.kr/live/2025/3/"
         private const val BBC_LOGO = "https://sounds.files.bbci.co.uk/3.12.0/networks/"
         private const val AIR_LOGO = "https://dt89je83l7epy.cloudfront.net/images/"

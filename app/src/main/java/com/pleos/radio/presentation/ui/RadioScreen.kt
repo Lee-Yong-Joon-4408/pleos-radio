@@ -254,7 +254,7 @@ private fun RoundControl(
 private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
     when (status) {
         AudioStatus.Live -> LiveTag("IP", Color(0xFF3DDBD9))
-        is AudioStatus.Broadcast -> LiveTag(if (status.fallback) "Broadcast · IP lost" else "Broadcast", Color(0xFF5AA9FF))
+        is AudioStatus.Broadcast -> LiveTag(if (status.fallback) "RF · IP lost" else "RF", Color(0xFF5AA9FF))
         AudioStatus.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(18.dp), color = RadioColors.AccentBright, strokeWidth = 2.dp)
             Spacer(Modifier.width(10.dp))

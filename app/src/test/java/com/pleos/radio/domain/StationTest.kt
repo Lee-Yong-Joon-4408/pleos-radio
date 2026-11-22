@@ -9,8 +9,29 @@ class StationTest {
 
     private val catalog = StationCatalog()
 
+    /** Ordinary (IP) stations of a band, excluding the virtual RF twins. */
+    private fun ip(band: Band) = catalog.stations(band).filterNot { it.virtualRf }
+
+    @Test fun eachBandHasThreeVirtualRfTwinsRelayingTheirIpStation() {
+        Band.entries.forEach { band ->
+            val all = catalog.stations(band)
+            val rf = all.filter { it.virtualRf }
+            assertEquals("$band", 3, rf.size)
+            rf.forEach { twin ->
+                assertTrue(twin.id.endsWith(Station.RF_SUFFIX))
+                assertTrue(twin.name.endsWith(" · RF"))
+                val base = all.first { it.id == twin.baseId }
+                assertEquals(base.stream, twin.stream)
+                assertEquals(base.frequencyKhz, twin.frequencyKhz)
+                assertEquals(base.logoUrl, twin.logoUrl)
+                assertEquals(base.speechLanguage, twin.speechLanguage)
+                assertTrue(!base.virtualRf)
+            }
+        }
+    }
+
     @Test fun dabIsTenBbcThenTenGermanServices() {
-        val dab = catalog.stations(Band.DAB)
+        val dab = ip(Band.DAB)
         assertEquals(20, dab.size)
         val (bbc, german) = dab.partition { it.name.startsWith("BBC") }
         assertEquals(10, bbc.size)
@@ -38,17 +59,17 @@ class StationTest {
     }
 
     @Test fun fmStationsAreSortedByFrequency() {
-        val freqs = catalog.stations(Band.FM).map { it.frequencyKhz }
+        val freqs = ip(Band.FM).map { it.frequencyKhz }
         assertEquals(freqs.sorted(), freqs)
-        assertEquals("107.7 MHz", catalog.stations(Band.FM).last().frequencyLabel)
+        assertEquals("107.7 MHz", ip(Band.FM).last().frequencyLabel)
     }
 
     @Test fun amStationsAreRealSeoulFrequencies() {
-        assertEquals(listOf(603, 711, 837, 972, 1134, 1188), catalog.stations(Band.AM).map { it.frequencyKhz })
+        assertEquals(listOf(603, 711, 837, 972, 1134, 1188), ip(Band.AM).map { it.frequencyKhz })
     }
 
     @Test fun drmIsAllIndiaRadioOnRealDrmFrequencies() {
-        val drm = catalog.stations(Band.DRM)
+        val drm = ip(Band.DRM)
         assertEquals(listOf(549, 612, 648, 738, 783, 801, 810, 999, 1044, 1368), drm.map { it.frequencyKhz })
         assertTrue(drm.all { (it.stream as StreamSource.Direct).url.let { u -> u.startsWith("https://") && u.endsWith(".m3u8") } })
         assertEquals(
@@ -83,7 +104,7 @@ class StationTest {
     }
 
     @Test fun atscIsKoreanTerrestrialTvWithVirtualAndRfChannel() {
-        val atsc = catalog.stations(Band.ATSC)
+        val atsc = ip(Band.ATSC)
         assertEquals(listOf("KBS 2TV", "KBS 1TV", "EBS 1TV", "EBS 2TV"), atsc.map { it.name })
         assertEquals("CH 9-1 (RF 52)  701 MHz", atsc.first { it.id == "atsc_kbs1" }.frequencyLabel)
         assertEquals("CH 10-2 (RF 18)  497 MHz", atsc.first { it.id == "atsc_ebs2" }.frequencyLabel)

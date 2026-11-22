@@ -24,6 +24,7 @@ enum class Band(val label: String) {
  * @param logoOnDark the logo is light-on-transparent and needs a dark card behind it.
  * @param speechLanguage broadcast language (BCP-47, e.g. "de-DE") for live captions; null = no captions.
  * @param translateCaptions true: captions are translated (DAB / DRM); false: speech is shown as-is (FM / AM).
+ * @param virtualRf virtual RF-network channel: shown as received over RF, audio actually relayed from its IP stream.
  */
 data class Station(
     val id: String,
@@ -42,7 +43,15 @@ data class Station(
     val logoOnDark: Boolean = false,
     val speechLanguage: String? = null,
     val translateCaptions: Boolean = true,
+    val virtualRf: Boolean = false,
 ) {
+    /** Id of the IP station this virtual RF channel relays (itself for ordinary stations). */
+    val baseId: String get() = id.removeSuffix(RF_SUFFIX)
+
+    companion object {
+        const val RF_SUFFIX = "_rf"
+    }
+
     /** "89.1 MHz", "603 kHz", "12B  225.648 MHz", "CH 9-1 (RF 52)  701 MHz". */
     val frequencyLabel: String
         get() = when (band) {

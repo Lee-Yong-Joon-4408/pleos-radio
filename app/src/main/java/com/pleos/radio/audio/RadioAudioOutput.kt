@@ -9,8 +9,11 @@ sealed interface AudioStatus {
     data object Connecting : AudioStatus
     /** Playing the station's internet stream (IP network). */
     data object Live : AudioStatus
-    /** Playing from the broadcast tuner; [fallback] = switched here because the IP stream was lost. */
-    data class Broadcast(val fallback: Boolean) : AudioStatus
+    /**
+     * Shown as received over the RF broadcast network. [fallback] = tuner took over because the IP stream was lost;
+     * [viaIp] = virtual RF channel whose audio is actually relayed from the IP stream.
+     */
+    data class Broadcast(val fallback: Boolean, val viaIp: Boolean = false) : AudioStatus
     /** [network] = connectivity-type failure (eligible for broadcast fallback); false = e.g. geo-blocked. */
     data class Error(val message: String, val network: Boolean = true) : AudioStatus
 }

@@ -88,6 +88,22 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     )
     val ui: StateFlow<RadioUiState> = _ui.asStateFlow()
 
+    init {
+        // One-time: add the virtual RF channels to preset lists saved before they existed.
+        if (!prefs.rfPresetsAdded()) {
+            Band.entries.forEach { band ->
+                val rfIds = stationsByBand.getValue(band).filter { it.virtualRf }.map { it.id }
+                val before = presetsByBand.getValue(band)
+                val after = RadioLogic.addToEmptySlots(before, rfIds)
+                if (after != before) {
+                    presetsByBand[band] = after
+                    prefs.savePresets(band, after)
+                }
+            }
+            prefs.markRfPresetsAdded()
+        }
+    }
+
     private var scanJob: Job? = null
     private var messageJob: Job? = null
 

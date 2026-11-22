@@ -38,6 +38,10 @@ class RadioPreferences(context: Context) {
     fun transcriptEnabled(): Boolean = prefs.getBoolean(KEY_TRANSCRIPT, true)
     fun saveTranscriptEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_TRANSCRIPT, enabled).apply()
 
+    /** One-time migration: virtual RF presets added to existing preset lists. */
+    fun rfPresetsAdded(): Boolean = prefs.getBoolean(KEY_RF_PRESETS, false)
+    fun markRfPresetsAdded() = prefs.edit().putBoolean(KEY_RF_PRESETS, true).apply()
+
     fun captionEngine(): String? = prefs.getString(KEY_ENGINE, null)
     fun saveCaptionEngine(name: String) = prefs.edit().putString(KEY_ENGINE, name).apply()
 
@@ -55,6 +59,7 @@ class RadioPreferences(context: Context) {
         const val KEY_CLOUD_KEY = "google_cloud_api_key"
         const val KEY_ENGINE = "caption_engine"
         const val KEY_TRANSCRIPT = "transcript_enabled"
+        const val KEY_RF_PRESETS = "rf_presets_v1"
         const val KEY_WHISPER_MODEL = "whisper_model"
     }
 }

@@ -30,14 +30,18 @@ class HybridRadioAudio(
 
     private val route = MutableStateFlow(Route.NONE)
     private val fallback = MutableStateFlow(false)
-    private var current: Station? = null
+    private val currentStation = MutableStateFlow<Station?>(null)
+    private var current: Station?
+        get() = currentStation.value
+        set(value) { currentStation.value = value }
     private var probeJob: Job? = null
 
-    override val status: StateFlow<AudioStatus> = combine(route, fallback, streaming.status) { r, fb, s ->
+    override val status: StateFlow<AudioStatus> = combine(route, fallback, streaming.status, currentStation) { r, fb, s, st ->
         when (r) {
             Route.NONE -> AudioStatus.Idle
             Route.BROADCAST -> AudioStatus.Broadcast(fallback = fb)
-            Route.STREAM -> s
+            // Virtual RF channel: presented as RF reception while its audio is relayed from the IP stream.
+            Route.STREAM -> if (st?.virtualRf == true && s == AudioStatus.Live) AudioStatus.Broadcast(fallback = false, viaIp = true) else s
         }
     }.stateIn(scope, SharingStarted.Eagerly, AudioStatus.Idle)
 
