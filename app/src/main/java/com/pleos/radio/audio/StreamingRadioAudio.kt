@@ -8,6 +8,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.pleos.radio.data.StreamResolver
 import com.pleos.radio.domain.Station
@@ -53,6 +54,11 @@ class StreamingRadioAudio(
             override fun onPlayerError(error: PlaybackException) {
                 Log.w(TAG, "playback error for ${station?.name}: ${error.errorCodeName}", error)
                 val s = station ?: return
+                if (httpStatus(error) == 403) {
+                    // Geo-restricted (e.g. BBC domestic stations outside the UK): retrying cannot help.
+                    _status.value = AudioStatus.Error("${s.name} is not available in your region")
+                    return
+                }
                 // Signed URLs expire and live edges drift: fetch a fresh URL once before giving up.
                 if (!retried) {
                     retried = true
@@ -98,6 +104,11 @@ class StreamingRadioAudio(
             player.playWhenReady = true
         }
     }
+
+    private fun httpStatus(error: Throwable): Int? =
+        generateSequence(error) { it.cause }
+            .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+            .firstOrNull()?.responseCode
 
     private fun refreshStatus() {
         if (station == null) return

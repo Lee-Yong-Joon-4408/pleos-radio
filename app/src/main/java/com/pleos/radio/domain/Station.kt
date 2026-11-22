@@ -15,7 +15,7 @@ enum class Band(val label: String) {
  * One receivable service.
  *
  * @param frequencyKhz carrier frequency in kHz (FM 89.1 MHz = 89100, DAB block centre e.g. 225648).
- * @param channel DAB block label such as "12C", or ATSC virtual channel such as "14-1"; null otherwise.
+ * @param channel DAB block label such as "12B", or ATSC virtual channel such as "14-1"; null otherwise.
  * @param badge service-type badge shown above the name ("FM", "DAB+", "ATSC 3.0" …).
  * @param dynamicLabels rotating radiotext / DLS lines shown under the programme name.
  * @param signal received signal strength, 0..4 bars.
@@ -35,7 +35,7 @@ data class Station(
     val signal: Int = 4,
     val stream: StreamSource? = null,
 ) {
-    /** "89.1 MHz", "603 kHz", "12C  225.648 MHz", "CH 14-1  479 MHz". */
+    /** "89.1 MHz", "603 kHz", "12B  225.648 MHz", "CH 14-1  479 MHz". */
     val frequencyLabel: String
         get() = when (band) {
             Band.FM -> String.format(Locale.US, "%.1f MHz", frequencyKhz / 1000.0)

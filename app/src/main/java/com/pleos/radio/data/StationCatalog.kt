@@ -9,9 +9,9 @@ import kotlin.random.Random
  * Broadcast data source.
  *
  * Third-party Pleos Connect / AAOS apps cannot open the vehicle's broadcast-radio HAL
- * (`android.hardware.radio` is a system API). FM therefore lists the real Seoul-area stations and
- * plays each broadcaster's official internet simulcast ([StreamSource]); AM, DAB, DRM and ATSC
- * use a fixed simulated service list. A HAL-backed implementation can replace this class later.
+ * (`android.hardware.radio` is a system API). FM and AM therefore list the real Seoul-area
+ * stations and DAB the BBC National DAB lineup, each playing the broadcaster's official internet
+ * stream ([StreamSource]); DRM and ATSC use a fixed simulated service list. A HAL-backed implementation can replace this class later.
  */
 class StationCatalog(private val random: Random = Random.Default) {
 
@@ -26,12 +26,22 @@ class StationCatalog(private val random: Random = Random.Default) {
     /** Simulated band scan: same services, freshly measured signal strength. */
     fun scan(band: Band): List<Station> = stations(band).map { s ->
         if (s.stream != null) s // internet simulcast: no RF signal to measure
-        else s.copy(signal = random.nextInt(if (band == Band.DAB || band == Band.ATSC) 2 else 1, 5))
+        else s.copy(signal = random.nextInt(if (band == Band.ATSC) 2 else 1, 5))
     }
 
     private companion object {
-        fun dab(id: String, name: String, ch: String, khz: Int, programme: String, slogan: String, genre: String, vararg dls: String, signal: Int = 4) =
-            Station(id, Band.DAB, name, khz, ch, "DAB+", programme, slogan, genre, dls.toList(), signal)
+        fun dab(id: String, name: String, programme: String, genre: String, stream: StreamSource,
+                slogan: String = "BBC live stream · UK only") =
+            Station(id, Band.DAB, name, 225_648, "12B", "DAB", programme, slogan, genre, signal = 4, stream = stream)
+
+        /** BBC's own HLS live stream for a domestic station; the BBC CDN only serves it to UK addresses. */
+        fun bbcUk(id: String) = StreamSource.Direct(
+            "https://as-hls-uk-live.akamaized.net/pool_01505109/live/uk/$id/$id.isml/$id-audio%3d96000.norewind.m3u8"
+        )
+
+        val BBC_WORLD_SERVICE = StreamSource.Direct(
+            "https://as-hls-ww-live.akamaized.net/pool_87948813/live/ww/bbc_world_service/bbc_world_service.isml/bbc_world_service-audio%3d96000.norewind.m3u8"
+        )
 
         fun drm(id: String, name: String, khz: Int, programme: String, slogan: String, genre: String, vararg dls: String, signal: Int = 3) =
             Station(id, Band.DRM, name, khz, null, "DRM", programme, slogan, genre, dls.toList(), signal)
@@ -43,34 +53,30 @@ class StationCatalog(private val random: Random = Random.Default) {
         fun atsc(id: String, name: String, channel: String, mhz: Int, programme: String, slogan: String, genre: String, vararg dls: String, signal: Int = 4) =
             Station(id, Band.ATSC, name, mhz * 1000, channel, "ATSC 3.0", programme, slogan, genre, dls.toList(), signal)
 
-        fun am(id: String, name: String, khz: Int, programme: String, slogan: String, genre: String, vararg dls: String, signal: Int = 3) =
-            Station(id, Band.AM, name, khz, null, "AM", programme, slogan, genre, dls.toList(), signal)
+        fun am(id: String, name: String, khz: Int, programme: String, genre: String, stream: StreamSource,
+               slogan: String = "Live internet simulcast") =
+            Station(id, Band.AM, name, khz, null, "AM", programme, slogan, genre, signal = 4, stream = stream)
 
+        /** FEBC publishes one Seoul web stream (FM 106.9); AM 1188 carries the same station. */
+        val FEBC_SEOUL = StreamSource.Direct("https://mlive3.febc.net/live5/seoulfm/playlist.m3u8")
+
+        /**
+         * BBC National DAB multiplex (block 12B, 225.648 MHz). World Service streams worldwide; the
+         * BBC serves its domestic stations to UK addresses only, so outside the UK they report "UK only".
+         * World Service comes first so the DAB tab plays out of the box anywhere.
+         */
         val DAB = listOf(
-            dab("dab_kmusic", "K-Music", "12C", 225_648, "Good Vibes", "Your Daily Music Station", "K-Pop",
-                "Now playing: Midnight Drive – The Lumens", "Next: Summer Letter – Haneul", "Request line open until 11 AM"),
-            dab("dab_news", "News Radio", "12C", 225_648, "Morning Briefing", "News every hour, on the hour", "News",
-                "Headlines: markets open higher", "Weather: clear skies, 18°C"),
-            dab("dab_classic", "Classic FM", "11D", 222_064, "Morning Classics", "Timeless music for the road", "Classical",
-                "Now playing: Vivaldi – Spring (Allegro)", "Next: Debussy – Clair de Lune"),
-            dab("dab_urban", "Urban Hits", "11D", 222_064, "Hit Factory", "The freshest R&B and hip-hop", "Hip-Hop",
-                "Now playing: City Lights – NOVA", "Top 20 countdown at 6 PM"),
-            dab("dab_chill", "Chill Out", "12A", 223_936, "Easy Morning", "Relax, breathe, drive", "Chill",
-                "Now playing: Ocean Floor – Sora", "Lo-fi beats all day long"),
-            dab("dab_world", "BBC World", "12A", 223_936, "World Update", "Global news and analysis", "News",
-                "Live: World Business Report", "Coming up: Science in Action"),
-            dab("dab_jazz", "Jazz Lounge", "10B", 211_648, "Blue Hour", "Smooth jazz for smooth roads", "Jazz",
-                "Now playing: Autumn Walk – Trio Lumen", signal = 3),
-            dab("dab_rock", "Rock Nation", "10B", 211_648, "Drive Time Rock", "Turn it up", "Rock",
-                "Now playing: Highway Fire – Static Kings", signal = 3),
-            dab("dab_traffic", "Traffic Info", "9A", 202_928, "Road Watch", "Live traffic every 10 minutes", "Traffic",
-                "Gyeongbu Expwy: slow near Hannam IC", "Olympic-daero: clear"),
-            dab("dab_kids", "Kids Radio", "9A", 202_928, "Sing Along", "Songs and stories for the back seat", "Kids",
-                "Now playing: The Little Star Song", signal = 2),
-            dab("dab_talk", "Talk Seoul", "8C", 199_360, "City Talk", "Your city, your voice", "Talk",
-                "Today: weekend festivals around town", signal = 3),
-            dab("dab_retro", "Retro 90s", "8C", 199_360, "Rewind", "The best of the 90s", "Pop",
-                "Now playing: Neon Summer – Pixel Hearts", signal = 3),
+            dab("dab_bbc_world", "BBC World Service", "International news and analysis", "News", BBC_WORLD_SERVICE,
+                slogan = "BBC live stream · worldwide"),
+            dab("dab_bbc_r1", "BBC Radio 1", "New music and entertainment", "Pop", bbcUk("bbc_radio_one")),
+            dab("dab_bbc_1xtra", "BBC Radio 1Xtra", "Hip-hop, R&B, grime and Afrobeats", "Urban", bbcUk("bbc_1xtra")),
+            dab("dab_bbc_r2", "BBC Radio 2", "The UK's most listened-to station", "Adult contemporary", bbcUk("bbc_radio_two")),
+            dab("dab_bbc_r3", "BBC Radio 3", "Classical music, jazz and arts", "Classical", bbcUk("bbc_radio_three")),
+            dab("dab_bbc_r4", "BBC Radio 4", "News, drama, comedy and documentaries", "Speech", bbcUk("bbc_radio_fourfm")),
+            dab("dab_bbc_r4x", "BBC Radio 4 Extra", "Comedy, drama and stories", "Speech", bbcUk("bbc_radio_four_extra")),
+            dab("dab_bbc_5live", "BBC Radio 5 Live", "Live news and sport", "News / Sport", bbcUk("bbc_radio_five_live")),
+            dab("dab_bbc_6music", "BBC Radio 6 Music", "Alternative and independent music", "Alternative", bbcUk("bbc_6music")),
+            dab("dab_bbc_asian", "BBC Asian Network", "British Asian music and talk", "Asian", bbcUk("bbc_asian_network")),
         )
 
         val DRM = listOf(
@@ -123,21 +129,15 @@ class StationCatalog(private val random: Random = Random.Default) {
                 "Today: tidal flats of the west coast", signal = 3),
         )
 
+        /** Seoul-area medium-wave stations (kHz, ascending) with their broadcaster's live stream. */
         val AM = listOf(
-            am("am_traffic", "Traffic AM", 603, "Road Report", "Traffic and weather together", "Traffic",
-                "Seoul ring road: moving well"),
-            am("am_seoultalk", "Seoul Talk", 711, "Morning Call", "Talk radio for the commute", "Talk",
-                "Phone-in: your best road trip"),
-            am("am_hanbit", "Hanbit News", 837, "News Desk", "Trusted news since 1961", "News",
-                "Headlines at the top of the hour", signal = 4),
-            am("am_classic", "Classic AM", 972, "Golden Melodies", "Songs you grew up with", "Oldies",
-                "Now playing: Moonlit River – Lee Seon", signal = 2),
-            am("am_sports", "Sports Talk", 1_134, "Game Day", "Live scores and analysis", "Sports",
-                "Baseball: 3–2, top of the 7th"),
-            am("am_heritage", "Heritage Radio", 1_188, "Our Songs", "Traditional music and stories", "Traditional",
-                "Now playing: Arirang (Gayageum)", signal = 2),
-            am("am_latenight", "Late Night AM", 1_350, "After Hours", "Company for the night drive", "Talk",
-                "Stories from the road", signal = 1),
+            am("am_kbs_happy", "KBS 해피FM", 603, "KBS 2Radio · AM 603", "Variety / Trot", StreamSource.Kbs(22)),
+            am("am_kbs_1radio", "KBS 1라디오", 711, "KBS 1Radio · AM 711", "News / Current affairs", StreamSource.Kbs(21)),
+            am("am_cbs_standard", "CBS 표준FM", 837, "CBS Standard FM · AM 837", "News / Talk", cbs("cbs981")),
+            am("am_kbs_hanminjok", "KBS 한민족방송", 972, "KBS Hanminjok Radio · AM 972", "Overseas Koreans", StreamSource.Kbs(26)),
+            am("am_kbs_3radio", "KBS 3라디오", 1_134, "KBS 3Radio · AM 1134", "Accessibility / Social welfare", StreamSource.Kbs(23)),
+            am("am_febc", "극동방송", 1_188, "FEBC Seoul · AM 1188", "Christian", FEBC_SEOUL,
+                slogan = "Live stream (same programme as FM 106.9)"),
         )
     }
 }

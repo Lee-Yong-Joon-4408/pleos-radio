@@ -22,11 +22,11 @@ class RadioLogicTest {
         assertNull(RadioLogic.adjacent(emptyList(), null, +1))
     }
 
-    @Test fun defaultPresetsMatchDesignOrder() {
+    @Test fun defaultPresetsFollowStationOrder() {
         val presets = RadioLogic.defaultPresets(dab)
         assertEquals(RadioLogic.PRESET_SLOTS, presets.size)
         val names = presets.take(6).map { id -> dab.first { it.id == id }.name }
-        assertEquals(listOf("K-Music", "News Radio", "Classic FM", "Urban Hits", "Chill Out", "BBC World"), names)
+        assertEquals(listOf("BBC World Service", "BBC Radio 1", "BBC Radio 1Xtra", "BBC Radio 2", "BBC Radio 3", "BBC Radio 4"), names)
     }
 
     @Test fun defaultPresetsPadWithEmptySlots() {
@@ -38,17 +38,17 @@ class RadioLogicTest {
 
     @Test fun assignPresetReplacesOnlyThatSlot() {
         val presets = RadioLogic.defaultPresets(dab)
-        val updated = RadioLogic.assignPreset(presets, 2, "dab_jazz")
-        assertEquals("dab_jazz", updated[2])
+        val updated = RadioLogic.assignPreset(presets, 2, "dab_bbc_6music")
+        assertEquals("dab_bbc_6music", updated[2])
         assertEquals(presets[1], updated[1])
-        assertEquals(presets, RadioLogic.assignPreset(presets, 99, "dab_jazz"))
+        assertEquals(presets, RadioLogic.assignPreset(presets, 99, "dab_bbc_6music"))
     }
 
     @Test fun restorePresetsDropsUnknownIdsAndPads() {
         val known = dab.map { it.id }.toSet()
-        val restored = RadioLogic.restorePresets(listOf("dab_news", "gone", null), known, emptyList())
+        val restored = RadioLogic.restorePresets(listOf("dab_bbc_r2", "gone", null), known, emptyList())
         assertEquals(RadioLogic.PRESET_SLOTS, restored.size)
-        assertEquals("dab_news", restored[0])
+        assertEquals("dab_bbc_r2", restored[0])
         assertNull(restored[1])
         val fallback = RadioLogic.defaultPresets(dab)
         assertEquals(fallback, RadioLogic.restorePresets(null, known, fallback))
@@ -61,11 +61,11 @@ class RadioLogicTest {
     }
 
     @Test fun favoritesToggleAndFilter() {
-        val favs = RadioLogic.toggle(emptySet(), "dab_kmusic")
-        assertTrue("dab_kmusic" in favs)
+        val favs = RadioLogic.toggle(emptySet(), "dab_bbc_world")
+        assertTrue("dab_bbc_world" in favs)
         assertEquals(listOf(dab[0]), RadioLogic.filter(dab, favs, onlyFavorites = true))
         assertEquals(dab, RadioLogic.filter(dab, favs, onlyFavorites = false))
-        assertTrue(RadioLogic.toggle(favs, "dab_kmusic").isEmpty())
+        assertTrue(RadioLogic.toggle(favs, "dab_bbc_world").isEmpty())
     }
 
     @Test fun twoPresetPages() = assertEquals(2, RadioLogic.pageCount())

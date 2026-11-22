@@ -9,8 +9,10 @@ class StationTest {
 
     private val catalog = StationCatalog()
 
-    @Test fun dabFrequencyLabelMatchesDesign() {
-        assertEquals("12C  225.648 MHz", catalog.stations(Band.DAB).first().frequencyLabel)
+    @Test fun dabIsBbcNationalMultiplexOn12B() {
+        val dab = catalog.stations(Band.DAB)
+        assertTrue(dab.all { it.frequencyLabel == "12B  225.648 MHz" && it.name.startsWith("BBC") })
+        assertEquals("BBC World Service", dab.first().name)
     }
 
     @Test fun fmUsesMhzWithOneDecimal() {
@@ -22,9 +24,11 @@ class StationTest {
         assertEquals(listOf("FM", "AM", "DAB", "DRM", "ATSC"), Band.entries.map { it.label })
     }
 
-    @Test fun everyFmStationHasARealStreamOthersAreSimulated() {
-        assertTrue(catalog.stations(Band.FM).all { it.stream != null })
-        listOf(Band.AM, Band.DAB, Band.DRM, Band.ATSC).forEach { band ->
+    @Test fun fmAmDabHaveRealStreamsOthersAreSimulated() {
+        listOf(Band.FM, Band.AM, Band.DAB).forEach { band ->
+            assertTrue(catalog.stations(band).all { it.stream != null })
+        }
+        listOf(Band.DRM, Band.ATSC).forEach { band ->
             assertTrue(catalog.stations(band).all { it.stream == null })
         }
     }
@@ -33,6 +37,10 @@ class StationTest {
         val freqs = catalog.stations(Band.FM).map { it.frequencyKhz }
         assertEquals(freqs.sorted(), freqs)
         assertEquals("107.7 MHz", catalog.stations(Band.FM).last().frequencyLabel)
+    }
+
+    @Test fun amStationsAreRealSeoulFrequencies() {
+        assertEquals(listOf(603, 711, 837, 972, 1134, 1188), catalog.stations(Band.AM).map { it.frequencyKhz })
     }
 
     @Test fun atscShowsVirtualChannel() {
@@ -45,8 +53,8 @@ class StationTest {
     }
 
     @Test fun infoLineStartsWithSloganAndCycles() {
-        val s = catalog.stations(Band.DAB).first()
-        assertEquals("Your Daily Music Station", s.infoLine(0))
+        val s = catalog.stations(Band.DRM).first()
+        assertEquals("Digital shortwave news, worldwide", s.infoLine(0))
         assertEquals(s.dynamicLabels[0], s.infoLine(1))
         assertEquals(s.infoLine(0), s.infoLine(s.dynamicLabels.size + 1))
     }
