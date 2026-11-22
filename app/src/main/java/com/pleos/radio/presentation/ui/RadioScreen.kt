@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Pause
@@ -47,6 +47,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -272,7 +273,10 @@ private fun PresetBar(ui: RadioUiState, vm: RadioViewModel) {
     val perPage = RadioLogic.PRESETS_PER_PAGE
     val first = ui.presetPage * perPage
     Row(Modifier.fillMaxWidth().height(98.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
+            Modifier.weight(1f).presetSwipe(onNext = { vm.changePresetPage(+1) }, onPrevious = { vm.changePresetPage(-1) }),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             for (slot in first until first + perPage) {
                 PresetChip(
                     number = slot + 1,
@@ -285,18 +289,35 @@ private fun PresetBar(ui: RadioUiState, vm: RadioViewModel) {
                 )
             }
         }
-        Box(
-            Modifier.width(56.dp).fillMaxHeight().clickable(role = Role.Button, onClickLabel = "More presets") { vm.changePresetPage(+1) },
-            contentAlignment = Alignment.Center,
+        // Next page (wraps from the last page to the first) with a page indicator underneath.
+        Column(
+            Modifier.width(64.dp).fillMaxHeight().clickable(role = Role.Button, onClickLabel = "Next preset page") { vm.changePresetPage(+1) },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            val lastPage = ui.presetPage == ui.presetPageCount - 1 && ui.presetPageCount > 1
             Icon(
-                if (lastPage) Icons.AutoMirrored.Filled.KeyboardArrowLeft else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = "Preset page ${ui.presetPage + 1} of ${ui.presetPageCount}",
                 tint = RadioColors.TextSecondary,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
             )
+            Text("${ui.presetPage + 1} / ${ui.presetPageCount}", color = RadioColors.Muted, fontSize = 16.sp)
         }
+    }
+}
+
+/** Horizontal swipe across the preset row flips pages (left = next, right = previous). */
+private fun Modifier.presetSwipe(onNext: () -> Unit, onPrevious: () -> Unit): Modifier = pointerInput(Unit) {
+    var total = 0f
+    val threshold = 60.dp.toPx()
+    detectHorizontalDragGestures(
+        onDragStart = { total = 0f },
+        onDragEnd = {
+            if (total <= -threshold) onNext() else if (total >= threshold) onPrevious()
+        },
+    ) { change, dx ->
+        change.consume()
+        total += dx
     }
 }
 

@@ -68,5 +68,26 @@ class RadioLogicTest {
         assertTrue(RadioLogic.toggle(favs, "dab_bbc_world").isEmpty())
     }
 
-    @Test fun twoPresetPages() = assertEquals(2, RadioLogic.pageCount())
+    @Test fun thirtySixPresetsMakeSixPages() {
+        assertEquals(36, RadioLogic.PRESET_SLOTS)
+        assertEquals(6, RadioLogic.pageCount())
+    }
+
+    @Test fun defaultPresetsHoldAllTwentyDabServices() {
+        val presets = RadioLogic.defaultPresets(dab)
+        assertEquals(dab.map { it.id }, presets.take(dab.size))
+        assertTrue(presets.drop(dab.size).all { it == null })
+    }
+
+    @Test fun growingPresetBankKeepsSavedSlotsAndFillsNewOnesWithUnusedDefaults() {
+        val known = dab.map { it.id }.toSet()
+        val fallback = RadioLogic.defaultPresets(dab)
+        // An old 12-slot save where the user put 6 Music in slot 1.
+        val saved = listOf("dab_bbc_6music") + fallback.drop(1).take(11)
+        val restored = RadioLogic.restorePresets(saved, known, fallback)
+        assertEquals(saved, restored.take(12))
+        val added = restored.drop(12).filterNotNull()
+        assertTrue(added.none { it in saved })
+        assertEquals(known - saved.filterNotNull().toSet(), added.toSet())
+    }
 }

@@ -10,7 +10,7 @@ import kotlin.random.Random
  *
  * Third-party Pleos Connect / AAOS apps cannot open the vehicle's broadcast-radio HAL
  * (`android.hardware.radio` is a system API). FM and AM therefore list the real Seoul-area
- * stations and DAB the BBC National DAB lineup, each playing the broadcaster's official internet
+ * stations and DAB the BBC National DAB lineup plus German DAB+ stations, each playing the broadcaster's official internet
  * stream ([StreamSource]); DRM and ATSC use a fixed simulated service list. A HAL-backed implementation can replace this class later.
  */
 class StationCatalog(private val random: Random = Random.Default) {
@@ -33,6 +33,12 @@ class StationCatalog(private val random: Random = Random.Default) {
         fun dab(id: String, name: String, programme: String, genre: String, stream: StreamSource,
                 slogan: String = "BBC live stream · UK only") =
             Station(id, Band.DAB, name, 225_648, "12B", "DAB", programme, slogan, genre, signal = 4, stream = stream)
+
+        /** German DAB+ service: block + centre frequency of its home ensemble. */
+        fun dabDe(id: String, name: String, block: String, khz: Int, programme: String, genre: String, streamUrl: String,
+                  slogan: String = "ARD live stream · worldwide") =
+            Station(id, Band.DAB, name, khz, block, "DAB+", programme, slogan, genre, signal = 4,
+                stream = StreamSource.Direct(streamUrl))
 
         /** BBC's own HLS live stream for a domestic station; the BBC CDN only serves it to UK addresses. */
         fun bbcUk(id: String) = StreamSource.Direct(
@@ -61,9 +67,9 @@ class StationCatalog(private val random: Random = Random.Default) {
         val FEBC_SEOUL = StreamSource.Direct("https://mlive3.febc.net/live5/seoulfm/playlist.m3u8")
 
         /**
-         * BBC National DAB multiplex (block 12B, 225.648 MHz). World Service streams worldwide; the
-         * BBC serves its domestic stations to UK addresses only, so outside the UK they report "UK only".
-         * World Service comes first so the DAB tab plays out of the box anywhere.
+         * BBC National DAB multiplex (block 12B, 225.648 MHz) followed by ten German DAB+ services.
+         * World Service streams worldwide; the BBC serves its domestic stations to UK addresses only, so
+         * outside the UK they report "UK only". World Service comes first so the DAB tab plays anywhere.
          */
         val DAB = listOf(
             dab("dab_bbc_world", "BBC World Service", "International news and analysis", "News", BBC_WORLD_SERVICE,
@@ -77,6 +83,29 @@ class StationCatalog(private val random: Random = Random.Default) {
             dab("dab_bbc_5live", "BBC Radio 5 Live", "Live news and sport", "News / Sport", bbcUk("bbc_radio_five_live")),
             dab("dab_bbc_6music", "BBC Radio 6 Music", "Alternative and independent music", "Alternative", bbcUk("bbc_6music")),
             dab("dab_bbc_asian", "BBC Asian Network", "British Asian music and talk", "Asian", bbcUk("bbc_asian_network")),
+
+            // Germany (DAB+). Blocks per "Liste der DAB-Sender in Deutschland": Deutschlandradio on the national
+            // Bundesmux 5C; ARD stations on their home state's public ensemble. All stream worldwide.
+            dabDe("dab_de_dlf", "Deutschlandfunk", "5C", 178_352, "Deutschlandradio · nationwide", "News / Information",
+                "https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3", slogan = "Deutschlandradio live stream · worldwide"),
+            dabDe("dab_de_dlfkultur", "Deutschlandfunk Kultur", "5C", 178_352, "Deutschlandradio · nationwide", "Culture",
+                "https://st02.sslstream.dlf.de/dlf/02/128/mp3/stream.mp3", slogan = "Deutschlandradio live stream · worldwide"),
+            dabDe("dab_de_dlfnova", "Deutschlandfunk Nova", "5C", 178_352, "Deutschlandradio · nationwide", "Youth / Knowledge",
+                "https://st03.sslstream.dlf.de/dlf/03/128/mp3/stream.mp3", slogan = "Deutschlandradio live stream · worldwide"),
+            dabDe("dab_de_1live", "1LIVE", "11D", 222_064, "WDR · Nordrhein-Westfalen", "Pop / Youth",
+                "https://wdr-1live-live.icecastssl.wdr.de/wdr/1live/live/mp3/128/stream.mp3"),
+            dabDe("dab_de_wdr2", "WDR 2", "11D", 222_064, "WDR · Nordrhein-Westfalen", "Pop / News",
+                "https://wdr-wdr2-rheinland.icecastssl.wdr.de/wdr/wdr2/rheinland/mp3/128/stream.mp3"),
+            dabDe("dab_de_bayern3", "Bayern 3", "11D", 222_064, "BR · Bayern", "Pop",
+                "https://dispatcher.rndfnk.com/br/br3/live/mp3/mid"),
+            dabDe("dab_de_ndr2", "NDR 2", "7A", 188_928, "NDR · Niedersachsen (Hannover)", "Pop",
+                "https://icecast.ndr.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3"),
+            dabDe("dab_de_swr3", "SWR3", "9D", 208_064, "SWR · Baden-Württemberg (Stuttgart)", "Pop",
+                "https://liveradio.swr.de/sw282p3/swr3/play.mp3"),
+            dabDe("dab_de_hr3", "hr3", "7B", 190_640, "hr · Hessen", "Pop",
+                "https://dispatcher.rndfnk.com/hr/hr3/live/mp3/high"),
+            dabDe("dab_de_radioeins", "radioeins", "7D", 194_064, "rbb · Berlin", "Alternative",
+                "https://dispatcher.rndfnk.com/rbb/radioeins/live/mp3/mid"),
         )
 
         val DRM = listOf(

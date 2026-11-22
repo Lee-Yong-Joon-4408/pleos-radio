@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Plays a station's internet simulcast with Media3 ExoPlayer (HLS).
+ * Plays a station's internet simulcast with Media3 ExoPlayer (HLS or progressive MP3).
  * ExoPlayer manages media audio focus itself (pause on loss, suspend on transient loss, duck).
  * Must be used from the main thread.
  */
@@ -99,7 +99,12 @@ class StreamingRadioAudio(
                 _status.value = AudioStatus.Error("Cannot reach ${target.name} – check network")
                 return@launch
             }
-            player.setMediaItem(MediaItem.Builder().setUri(url).setMimeType(MimeTypes.APPLICATION_M3U8).build())
+            // HLS playlists are declared explicitly (signed URLs hide the extension in some cases);
+            // anything else (e.g. Icecast MP3) is left to ExoPlayer's progressive extractor sniffing.
+            val item = MediaItem.Builder().setUri(url)
+                .apply { if (".m3u8" in url) setMimeType(MimeTypes.APPLICATION_M3U8) }
+                .build()
+            player.setMediaItem(item)
             player.prepare()
             player.playWhenReady = true
         }

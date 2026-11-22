@@ -9,10 +9,17 @@ class StationTest {
 
     private val catalog = StationCatalog()
 
-    @Test fun dabIsBbcNationalMultiplexOn12B() {
+    @Test fun dabIsTenBbcThenTenGermanServices() {
         val dab = catalog.stations(Band.DAB)
-        assertTrue(dab.all { it.frequencyLabel == "12B  225.648 MHz" && it.name.startsWith("BBC") })
+        assertEquals(20, dab.size)
+        val (bbc, german) = dab.partition { it.name.startsWith("BBC") }
+        assertEquals(10, bbc.size)
+        assertTrue(bbc.all { it.frequencyLabel == "12B  225.648 MHz" && it.badge == "DAB" })
         assertEquals("BBC World Service", dab.first().name)
+        assertEquals(10, german.size)
+        assertTrue(german.all { it.badge == "DAB+" })
+        assertEquals("5C  178.352 MHz", german.first { it.name == "Deutschlandfunk" }.frequencyLabel)
+        assertEquals("11D  222.064 MHz", german.first { it.name == "Bayern 3" }.frequencyLabel)
     }
 
     @Test fun fmUsesMhzWithOneDecimal() {
