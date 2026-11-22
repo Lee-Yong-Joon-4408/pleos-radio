@@ -55,6 +55,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pleos.radio.audio.AudioStatus
+import com.pleos.radio.audio.ReceptionPath
+import com.pleos.radio.audio.receptionPath
 import com.pleos.radio.domain.Band
 import com.pleos.radio.domain.RadioLogic
 import com.pleos.radio.domain.Station
@@ -66,13 +68,14 @@ import com.pleos.radio.presentation.ui.theme.RadioColors
 @Composable
 fun RadioScreen(ui: RadioUiState, vm: RadioViewModel) {
     Box(Modifier.fillMaxSize()) {
-        NightLandscape(
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 118.dp)
-                .fillMaxWidth(0.66f)
-                .height(470.dp)
-        )
+        val backdrop = Modifier
+            .align(Alignment.TopEnd)
+            .padding(top = 118.dp)
+            .fillMaxWidth(0.66f)
+            .height(470.dp)
+        NightLandscape(backdrop)
+        // On air: animated broadcast waves or IP data flow, depending on how the audio is arriving.
+        ReceptionBackdrop(if (ui.playing) ui.audioStatus.receptionPath() else ReceptionPath.NONE, backdrop)
         Column(Modifier.fillMaxSize().padding(start = 52.dp, end = 34.dp)) {
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth().height(80.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -250,11 +253,8 @@ private fun RoundControl(
 @Composable
 private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
     when (status) {
-        AudioStatus.Live -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp).background(Color(0xFFFF4D5E), CircleShape))
-            Spacer(Modifier.width(8.dp))
-            Text("LIVE", color = RadioColors.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-        }
+        AudioStatus.Live -> LiveTag("IP", Color(0xFF3DDBD9))
+        is AudioStatus.Broadcast -> LiveTag(if (status.fallback) "Broadcast · IP lost" else "Broadcast", Color(0xFF5AA9FF))
         AudioStatus.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(18.dp), color = RadioColors.AccentBright, strokeWidth = 2.dp)
             Spacer(Modifier.width(10.dp))
@@ -266,8 +266,17 @@ private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
             fontSize = 20.sp,
             modifier = Modifier.clickable(role = Role.Button, onClickLabel = "Retry", onClick = onRetry),
         )
-        AudioStatus.Simulated -> Text("Simulated audio", color = RadioColors.Muted.copy(alpha = 0.7f), fontSize = 18.sp)
         AudioStatus.Idle -> Unit
+    }
+}
+
+@Composable
+private fun LiveTag(path: String, pathColor: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(12.dp).background(Color(0xFFFF4D5E), CircleShape))
+        Spacer(Modifier.width(8.dp))
+        Text("LIVE", color = RadioColors.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+        Text("  ·  $path", color = pathColor, fontSize = 18.sp, fontWeight = FontWeight.Medium)
     }
 }
 

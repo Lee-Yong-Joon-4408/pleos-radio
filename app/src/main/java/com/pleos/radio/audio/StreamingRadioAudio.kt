@@ -12,6 +12,8 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.TeeAudioProcessor
@@ -52,6 +54,8 @@ class StreamingRadioAudio(
     }
 
     private val player = ExoPlayer.Builder(context, renderers)
+        // Fail fast on a lost network so the hybrid radio can switch to broadcast within seconds.
+        .setMediaSourceFactory(DefaultMediaSourceFactory(context).setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(2)))
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
             /* handleAudioFocus = */ true,
@@ -79,7 +83,7 @@ class StreamingRadioAudio(
                 val s = station ?: return
                 if (httpStatus(error) == 403) {
                     // Geo-restricted (e.g. BBC domestic stations outside the UK): retrying cannot help.
-                    _status.value = AudioStatus.Error("${s.name} is not available in your region")
+                    _status.value = AudioStatus.Error("${s.name} is not available in your region", network = false)
                     return
                 }
                 // Signed URLs expire and live edges drift: fetch a fresh URL once before giving up.

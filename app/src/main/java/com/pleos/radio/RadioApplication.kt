@@ -43,9 +43,11 @@ class RadioApplication : Application() {
         catalog = StationCatalog()
         preferences = RadioPreferences(this)
         val tap = PcmTap()
+        val resolver = StreamResolver()
         audio = HybridRadioAudio(
             simulated = SimulatedBroadcastAudio(this),
-            streaming = StreamingRadioAudio(this, StreamResolver(), appScope, tap),
+            streaming = StreamingRadioAudio(this, resolver, appScope, tap),
+            ipReachable = { station -> station.stream?.let { resolver.reachable(it) } ?: false },
             scope = appScope,
         )
         whisperModels = WhisperModelStore(this, appScope)

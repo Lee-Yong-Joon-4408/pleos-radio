@@ -26,6 +26,7 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 | 방송 정보 | DAB+ 배지, 채널·주파수, 프로그램명, DLS(라디오텍스트) 6초 순환 |
 | 상단 바 | Radio › 밴드 경로, 실시간 시계 |
 | 실시간 받아쓰기 (FM·AM) | 한국어 방송의 음성을 번역 없이 그대로 텍스트로 같은 5줄 패널에 표시(On/Off 메뉴). 엔진은 번역 자막과 동일 |
+| 수신 경로 배경 · 하이브리드 전환 | 재생 중 배경에 수신 경로를 애니메이션으로 표시: IP망(인터넷 스트림)은 데이터 패킷이 네트워크를 거쳐 수신기로 들어오는 모습, 방송망(튜너)은 송신탑에서 전파가 퍼지는 모습. IP 스트림이 끊기면 방송망으로 자동 전환하고 복구되면 IP로 복귀 |
 | 좌측 레일 | Home(라디오로 복귀), Radio, Media(미니 플레이어), Settings(자막 엔진·음성 모델·자막 언어·FM/AM 받아쓰기·프리셋 초기화) |
 | 스티어링 휠 미디어 키 | 다음/이전/재생·정지 |
 
@@ -45,6 +46,14 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 * `SimulatedBroadcastAudio`(합성 톤)는 현재 쓰이지 않으며, 스트림이 없는 방송을 위한 대체 경로로 남겨 두었습니다.
 
 `HybridRadioAudio`가 방송마다 두 경로 중 하나를 고르고, 미디어 오디오 포커스를 처리합니다(영구 상실 시 일시정지, 일시 상실 시 중단 후 재개, 덕킹).
+
+## 수신 경로 표시와 하이브리드 전환
+실제 차량용 하이브리드 라디오처럼 방송을 두 경로로 받습니다.
+
+* **IP망:** 방송사 인터넷 스트림. 평소에는 이 경로로 재생하며, 상태 칩에 `LIVE · IP`, 배경에 네트워크 메시를 따라 데이터 패킷이 수신기로 흘러드는 애니메이션이 표시됩니다.
+* **방송망:** 튜너. IP 스트림이 네트워크 문제로 끊기면(ExoPlayer 재시도 2회 후) 같은 방송을 튜너로 자동 전환하고 `LIVE · Broadcast · IP lost`와 송신탑에서 전파가 퍼지는 애니메이션을 보여 줍니다. 20초마다 IP 스트림에 접속해 보고, 되면 IP로 복귀합니다. 지역 제한(BBC 국내 방송 403)은 네트워크 장애가 아니므로 전환하지 않습니다.
+* 서드파티 앱은 차량의 방송 라디오 HAL을 쓸 수 없어 현재 튜너는 `SimulatedBroadcastAudio`(합성 톤)입니다. HAL 기반 튜너로 교체하면 실제 방송 수신으로 바뀝니다.
+* 에뮬레이터에서 비행기 모드로 확인: 네트워크 차단 약 12초 후 방송망 전환, 복구 약 18초 후 IP 복귀.
 
 ## 실시간 번역 자막 (DAB · DRM)
 재생 중인 오디오(ExoPlayer가 디코딩한 PCM)를 16 kHz 모노로 바꿔 약 6초 단위로 음성 인식 → 번역하고, 메인 화면 하단 5줄 패널에 최신 문장이 아래쪽에 오도록 표시합니다. 무음은 건너뛰고, 처리가 밀리면 가장 최근 구간만 처리합니다. 방송 언어: BBC en-GB, 독일 de-DE, AIR hi-IN / bn-IN / mr-IN / gu-IN.
@@ -68,6 +77,6 @@ app/src/main/java/com/pleos/radio/
 ├─ domain/  Station.kt, RadioLogic.kt, StreamSource.kt, caption/(Captions, PcmChunker)   (Android 비의존, 단위 테스트 대상)
 ├─ data/    StationCatalog.kt, RadioPreferences.kt, StreamResolver.kt,
 │           translate/(CaptionEngines, WhisperNative, WhisperModelStore, OnDeviceTranslator, GoogleCloudClient)
-├─ audio/   RadioAudioOutput.kt, HybridRadioAudio.kt, StreamingRadioAudio.kt, PcmTap.kt, SimulatedBroadcastAudio.kt
-└─ presentation/  MainActivity, RadioViewModel, LiveTranslator, ui/(RadioApp, RadioScreen, StationListPanel, Artwork, OtherScreens, theme)
+├─ audio/   RadioAudioOutput.kt(AudioStatus, ReceptionPath), HybridRadioAudio.kt, StreamingRadioAudio.kt, PcmTap.kt, SimulatedBroadcastAudio.kt
+└─ presentation/  MainActivity, RadioViewModel, LiveTranslator, ui/(RadioApp, RadioScreen, ReceptionBackdrop, CaptionPanel, StationListPanel, Artwork, OtherScreens, theme)
 ```

@@ -6,10 +6,22 @@ import kotlinx.coroutines.flow.StateFlow
 /** What the audio path is doing right now (shown next to the station badge). */
 sealed interface AudioStatus {
     data object Idle : AudioStatus
-    data object Simulated : AudioStatus
     data object Connecting : AudioStatus
+    /** Playing the station's internet stream (IP network). */
     data object Live : AudioStatus
-    data class Error(val message: String) : AudioStatus
+    /** Playing from the broadcast tuner; [fallback] = switched here because the IP stream was lost. */
+    data class Broadcast(val fallback: Boolean) : AudioStatus
+    /** [network] = connectivity-type failure (eligible for broadcast fallback); false = e.g. geo-blocked. */
+    data class Error(val message: String, val network: Boolean = true) : AudioStatus
+}
+
+/** Which delivery network the audio is currently arriving on (drives the background animation). */
+enum class ReceptionPath { NONE, BROADCAST, IP }
+
+fun AudioStatus.receptionPath(): ReceptionPath = when (this) {
+    AudioStatus.Live -> ReceptionPath.IP
+    is AudioStatus.Broadcast -> ReceptionPath.BROADCAST
+    else -> ReceptionPath.NONE
 }
 
 /** Audio sink for the tuner. Implementations own audio focus. */

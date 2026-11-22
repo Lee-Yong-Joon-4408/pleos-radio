@@ -26,6 +26,21 @@ class StreamResolver {
         }
     }
 
+    /** Resolves the stream and reads its first bytes: true when the IP stream is reachable right now. */
+    suspend fun reachable(source: StreamSource): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val conn = URL(resolve(source)).openConnection() as HttpURLConnection
+            conn.connectTimeout = 5_000
+            conn.readTimeout = 5_000
+            conn.setRequestProperty("User-Agent", USER_AGENT)
+            try {
+                conn.responseCode in 200..299 && conn.inputStream.use { it.read() } >= 0
+            } finally {
+                conn.disconnect()
+            }
+        }.getOrDefault(false)
+    }
+
     private fun get(url: String): String {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = TIMEOUT_MS
