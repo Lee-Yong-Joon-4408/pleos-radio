@@ -20,6 +20,8 @@ enum class Band(val label: String) {
  * @param dynamicLabels rotating radiotext / DLS lines shown under the programme name.
  * @param signal received signal strength, 0..4 bars.
  * @param stream real audio source; null means the simulated tuner audio is used.
+ * @param logoUrl station logo image (broadcaster's own image URL); null shows the band artwork.
+ * @param logoOnDark the logo is light-on-transparent and needs a dark card behind it.
  */
 data class Station(
     val id: String,
@@ -34,6 +36,8 @@ data class Station(
     val dynamicLabels: List<String> = emptyList(),
     val signal: Int = 4,
     val stream: StreamSource? = null,
+    val logoUrl: String? = null,
+    val logoOnDark: Boolean = false,
 ) {
     /** "89.1 MHz", "603 kHz", "12B  225.648 MHz", "CH 14-1  479 MHz". */
     val frequencyLabel: String

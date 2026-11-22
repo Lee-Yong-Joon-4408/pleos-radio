@@ -60,6 +60,15 @@ class StationTest {
         )
     }
 
+    @Test fun realStationsHaveHttpsLogosExceptNdr2() {
+        val real = listOf(Band.FM, Band.AM, Band.DAB, Band.DRM).flatMap { catalog.stations(it) }
+        val missing = real.filter { it.logoUrl == null }.map { it.id }
+        assertEquals(listOf("dab_de_ndr2"), missing)
+        assertTrue(real.mapNotNull { it.logoUrl }.all { it.startsWith("https://") })
+        assertTrue(catalog.stations(Band.ATSC).all { it.logoUrl == null })
+        assertTrue(catalog.scan(Band.FM).all { it.logoUrl != null })
+    }
+
     @Test fun atscShowsVirtualChannel() {
         assertEquals("CH 14-1  479 MHz", catalog.stations(Band.ATSC).first().frequencyLabel)
     }

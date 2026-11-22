@@ -159,7 +159,7 @@ private fun StationListButton(onClick: () -> Unit) {
 private fun NowPlaying(ui: RadioUiState, onRetry: () -> Unit) {
     val station = ui.current
     Row(Modifier.height(272.dp)) {
-        StationArtwork(ui.band, ui.playing, Modifier.size(width = 282.dp, height = 272.dp))
+        StationArtwork(station, ui.band, ui.playing, Modifier.size(width = 282.dp, height = 272.dp))
         Spacer(Modifier.width(52.dp))
         if (station == null) {
             Text("No station – open Station List and scan", color = RadioColors.Muted, fontSize = 26.sp,

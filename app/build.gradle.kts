@@ -62,6 +62,9 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.exoplayer.hls)
 
+    // Station logos (loaded from the broadcasters' own image URLs, disk-cached)
+    implementation(libs.coil.compose)
+
     testImplementation(libs.junit)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

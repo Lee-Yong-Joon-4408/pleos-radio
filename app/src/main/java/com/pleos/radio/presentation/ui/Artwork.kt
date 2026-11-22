@@ -21,6 +21,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.pleos.radio.domain.Station
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -39,9 +48,49 @@ import com.pleos.radio.presentation.ui.theme.RadioColors
 import kotlin.math.PI
 import kotlin.math.sin
 
-/** Square station artwork: animated level bars over the band name (DAB / DRM / AM). */
+/**
+ * Now-playing artwork: the station's logo on a card once it has loaded, otherwise (no logo, still loading,
+ * offline, or blocked) the band artwork. A small level meter in the corner keeps the "playing" cue.
+ */
 @Composable
-fun StationArtwork(band: Band, playing: Boolean, modifier: Modifier = Modifier) {
+fun StationArtwork(station: Station?, band: Band, playing: Boolean, modifier: Modifier = Modifier) {
+    val url = station?.logoUrl
+    var loaded by remember(url) { mutableStateOf(false) }
+    val shape = RoundedCornerShape(12.dp)
+    Box(modifier) {
+        if (!loaded) BandArtwork(band, playing, Modifier.matchParentSize())
+        if (url != null) {
+            val cardColor = if (station.logoOnDark) Color(0xFF16263D) else Color(0xFFF7F9FC)
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .clip(shape)
+                    .background(if (loaded) cardColor else Color.Transparent)
+                    .border(1.dp, if (loaded) Color(0xFF3A74B8).copy(alpha = 0.6f) else Color.Transparent, shape),
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
+                    contentDescription = "${station.name} logo",
+                    contentScale = ContentScale.Fit,
+                    onSuccess = { loaded = true },
+                    onError = { loaded = false },
+                    modifier = Modifier.fillMaxSize().padding(22.dp),
+                )
+                if (loaded && playing) {
+                    LevelBars(
+                        animate = true,
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).size(width = 30.dp, height = 22.dp),
+                        color = RadioColors.Accent,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Fallback artwork: animated level bars over the band name. */
+@Composable
+private fun BandArtwork(band: Band, playing: Boolean, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier

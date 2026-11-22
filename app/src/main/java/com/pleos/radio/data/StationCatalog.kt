@@ -16,7 +16,11 @@ import kotlin.random.Random
  */
 class StationCatalog(private val random: Random = Random.Default) {
 
-    fun stations(band: Band): List<Station> = when (band) {
+    fun stations(band: Band): List<Station> = stationsWithoutLogos(band).map { s ->
+        s.copy(logoUrl = LOGOS[s.id], logoOnDark = s.id in LOGOS_ON_DARK)
+    }
+
+    private fun stationsWithoutLogos(band: Band): List<Station> = when (band) {
         Band.DAB -> DAB
         Band.DRM -> DRM
         Band.FM -> FM
@@ -31,6 +35,78 @@ class StationCatalog(private val random: Random = Random.Default) {
     }
 
     private companion object {
+        private const val KBS_LOGO = "https://padmin.static.kbs.co.kr/live/2025/3/"
+        private const val BBC_LOGO = "https://sounds.files.bbci.co.uk/3.12.0/networks/"
+        private const val AIR_LOGO = "https://dt89je83l7epy.cloudfront.net/images/"
+        private const val ARD_IMAGE = "https://api.ardmediathek.de/image-service/images/urn:ard:image:"
+        private const val CBS_LOGO = "https://www.cbs.co.kr/img/og_image.png"
+        private const val SBS_LOGO = "https://www.sbs.co.kr/radio/img/sbs_radio.jpg"
+
+        private fun bbcLogo(network: String) = "$BBC_LOGO$network/blocks-colour_600x600.png"
+
+        /**
+         * Station logos from each broadcaster's own servers (KBS live API, MBC/SBS/CBS/EBS/YTN/FEBC sites,
+         * BBC Sounds, broadcaster web icons, ARD image service, Akashvani site). NDR blocks external access,
+         * so NDR 2 keeps the band artwork.
+         */
+        val LOGOS = mapOf(
+            // KBS (channel logos from the KBS live API)
+            "fm_kbs_cool" to KBS_LOGO + "11/1741700004290_443824.png",
+            "fm_kbs_classic" to KBS_LOGO + "11/1741700004216_443813.png",
+            "fm_kbs_1radio" to KBS_LOGO + "7/1741313100641_442721.png",
+            "fm_kbs_happy" to KBS_LOGO + "11/1741700004070_443799.png",
+            "am_kbs_happy" to KBS_LOGO + "11/1741700004070_443799.png",
+            "am_kbs_1radio" to KBS_LOGO + "7/1741313100641_442721.png",
+            "am_kbs_hanminjok" to KBS_LOGO + "11/1741700004397_443835.png",
+            "am_kbs_3radio" to KBS_LOGO + "11/1741700004143_443802.png",
+            // Other Korean broadcasters
+            "fm_mbc_fm4u" to "https://img.imbc.com/commons/2018/image/radio/logo-fm4u.png",
+            "fm_mbc_standard" to "https://img.imbc.com/commons/2018/image/radio/logo-fm.png",
+            "fm_sbs_power" to SBS_LOGO,
+            "fm_sbs_love" to SBS_LOGO,
+            "fm_cbs_music" to CBS_LOGO,
+            "fm_cbs_standard" to CBS_LOGO,
+            "am_cbs_standard" to CBS_LOGO,
+            "fm_ebs" to "https://m.ebs.co.kr/common/img/ebs_logo.png",
+            "fm_ytn" to "https://radio.ytn.co.kr/img/_top/new_logo_v2.jpg",
+            "am_febc" to "https://seoul.febc.net/assets/images/contents/footer_logo.png",
+            // BBC (BBC Sounds network artwork)
+            "dab_bbc_world" to bbcLogo("bbc_world_service"),
+            "dab_bbc_r1" to bbcLogo("bbc_radio_one"),
+            "dab_bbc_1xtra" to bbcLogo("bbc_1xtra"),
+            "dab_bbc_r2" to bbcLogo("bbc_radio_two"),
+            "dab_bbc_r3" to bbcLogo("bbc_radio_three"),
+            "dab_bbc_r4" to bbcLogo("bbc_radio_four"),
+            "dab_bbc_r4x" to bbcLogo("bbc_radio_four_extra"),
+            "dab_bbc_5live" to bbcLogo("bbc_radio_five_live"),
+            "dab_bbc_6music" to bbcLogo("bbc_6music"),
+            "dab_bbc_asian" to bbcLogo("bbc_asian_network"),
+            // Germany
+            "dab_de_dlf" to "https://www.deutschlandfunk.de/static/img/deutschlandfunk/icons/apple-touch-icon-180x180.png",
+            "dab_de_dlfkultur" to "https://www.deutschlandfunkkultur.de/static/img/deutschlandfunk_kultur/icons/apple-touch-icon-180x180.png",
+            "dab_de_dlfnova" to "https://www.deutschlandfunknova.de/apple-touch-icon.png",
+            "dab_de_1live" to "https://www1.wdr.de/radio/1live/resources/img/favicon/apple-touch-icon.png",
+            "dab_de_wdr2" to ARD_IMAGE + "61437343796eedf3?w=512",
+            "dab_de_bayern3" to ARD_IMAGE + "52fd25fc45de7c6a?w=512",
+            "dab_de_swr3" to "https://www.swr3.de/assets/swr3/icons/apple-touch-icon.png",
+            "dab_de_hr3" to "https://www.hr3.de/favicon.png",
+            "dab_de_radioeins" to "https://www.radioeins.de/content/dam/rbb/rbb/logos/touch/rad-152.png",
+            // All India Radio (Akashvani channel artwork)
+            "drm_air_mumbai_b" to AIR_LOGO + "airmumbaiasmita.jpg",
+            "drm_air_patna" to AIR_LOGO + "airpatna.jpg",
+            "drm_air_kolkata_a" to AIR_LOGO + "RADIO_817824.jpg",
+            "drm_air_lucknow" to AIR_LOGO + "airlucknow.jpg",
+            "drm_air_vb_chennai" to AIR_LOGO + "vividh-bharati.jpg",
+            "drm_air_rajkot" to AIR_LOGO + "airrajkot.jpg",
+            "drm_air_delhi_a" to AIR_LOGO + "RADIO_435004.jpg",
+            "drm_air_kolkata_b" to AIR_LOGO + "RADIO_480353.jpg",
+            "drm_air_mumbai_a" to AIR_LOGO + "sammumbai.jpg",
+            "drm_air_vb_delhi" to AIR_LOGO + "RADIO_624699.jpeg",
+        )
+
+        /** White-on-transparent logos. */
+        val LOGOS_ON_DARK = setOf("am_febc")
+
         fun dab(id: String, name: String, programme: String, genre: String, stream: StreamSource,
                 slogan: String = "BBC live stream · UK only") =
             Station(id, Band.DAB, name, 225_648, "12B", "DAB", programme, slogan, genre, signal = 4, stream = stream)
