@@ -149,7 +149,8 @@ class StationCatalog(private val random: Random = Random.Default) {
 
         fun fm(id: String, name: String, mhz: Double, programme: String, genre: String, stream: StreamSource) =
             Station(id, Band.FM, name, Math.round(mhz * 1000).toInt(), null, "FM", programme,
-                "Live internet simulcast", genre, signal = 4, stream = stream)
+                "Live internet simulcast", genre, signal = 4, stream = stream,
+                speechLanguage = "ko-KR", translateCaptions = false)
 
         /** UHF channel centre frequency (Korea uses the North American 6 MHz plan: RF 14 = 473 MHz). */
         fun uhfCentreKhz(rf: Int) = (473 + (rf - 14) * 6) * 1000
@@ -160,7 +161,8 @@ class StationCatalog(private val random: Random = Random.Default) {
 
         fun am(id: String, name: String, khz: Int, programme: String, genre: String, stream: StreamSource,
                slogan: String = "Live internet simulcast") =
-            Station(id, Band.AM, name, khz, null, "AM", programme, slogan, genre, signal = 4, stream = stream)
+            Station(id, Band.AM, name, khz, null, "AM", programme, slogan, genre, signal = 4, stream = stream,
+                speechLanguage = "ko-KR", translateCaptions = false)
 
         /** FEBC publishes one Seoul web stream (FM 106.9); AM 1188 carries the same station. */
         val FEBC_SEOUL = StreamSource.Direct("https://mlive3.febc.net/live5/seoulfm/playlist.m3u8")

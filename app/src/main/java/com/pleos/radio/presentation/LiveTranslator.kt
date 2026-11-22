@@ -43,14 +43,19 @@ class LiveTranslator(
         val apiKey: String = "",
         val model: WhisperModel = WhisperModel.BASE,
         val modelState: WhisperModelStore.State = WhisperModelStore.State.Missing,
+        /** On/off for transcribe-only stations (FM / AM). */
+        val transcriptEnabled: Boolean = true,
     ) {
         val speechLanguage: String? get() = station?.speechLanguage
+        val transcribeOnly: Boolean get() = station?.translateCaptions == false
+        /** Captions switched on: a target language for translated stations, the transcript switch for FM / AM. */
+        val captionsOn: Boolean get() = if (transcribeOnly) transcriptEnabled else target != CaptionLanguage.OFF
         private val engineReady: Boolean
             get() = when (engine) {
                 CaptionEngineType.CLOUD -> apiKey.isNotBlank()
                 CaptionEngineType.ON_DEVICE -> modelState == WhisperModelStore.State.Ready
             }
-        val active: Boolean get() = playing && speechLanguage != null && target != CaptionLanguage.OFF && engineReady
+        val active: Boolean get() = playing && speechLanguage != null && captionsOn && engineReady
     }
 
     private val _state = MutableStateFlow(CaptionState())
@@ -69,7 +74,9 @@ class LiveTranslator(
     fun update(next: Config) {
         val previous = config
         config = next
-        if (previous.station?.id != next.station?.id || previous.target != next.target || previous.engine != next.engine) buffer.clear()
+        if (previous.station?.id != next.station?.id || previous.target != next.target || previous.engine != next.engine ||
+            previous.transcriptEnabled != next.transcriptEnabled
+        ) buffer.clear()
         tap.enabled = next.active
         if (previous.active && !next.active) engines.values.forEach { it.release() }
         val language = next.speechLanguage
@@ -77,7 +84,7 @@ class LiveTranslator(
         _state.value = CaptionState(
             available = language != null,
             status = when {
-                language == null || next.target == CaptionLanguage.OFF -> CaptionStatus.OFF
+                language == null || !next.captionsOn -> CaptionStatus.OFF
                 next.engine == CaptionEngineType.CLOUD && next.apiKey.isBlank() -> CaptionStatus.NEED_KEY
                 next.engine == CaptionEngineType.ON_DEVICE && modelState is WhisperModelStore.State.Downloading -> CaptionStatus.DOWNLOADING
                 next.engine == CaptionEngineType.ON_DEVICE && modelState is WhisperModelStore.State.Failed -> CaptionStatus.ERROR
@@ -92,22 +99,24 @@ class LiveTranslator(
             engine = next.engine,
             progress = (modelState as? WhisperModelStore.State.Downloading)?.progress ?: 0f,
             modelSizeMb = next.model.sizeMb,
+            transcribeOnly = next.transcribeOnly,
+            transcriptEnabled = next.transcriptEnabled,
         )
     }
 
     private suspend fun process(pcm: ShortArray) {
         val cfg = config
         val language = cfg.speechLanguage ?: return
-        val targetCode = cfg.target.code ?: return
         if (!cfg.active || PcmChunker.rms(pcm) < PcmChunker.SILENCE_RMS) return
         val engine = engines.getValue(cfg.engine)
         val stationId = cfg.station?.id
         _state.update { it.copy(status = CaptionStatus.TRANSLATING) }
         try {
             val heard = Transcripts.clean(engine.recognize(pcm, language))
+            val targetCode = cfg.target.code
             val caption = when {
                 heard.isBlank() -> null
-                CaptionLanguages.sameLanguage(language, cfg.target) -> heard
+                cfg.transcribeOnly || targetCode == null || CaptionLanguages.sameLanguage(language, cfg.target) -> heard
                 else -> engine.translate(heard, CaptionLanguages.translationCode(language), targetCode)
             }
             if (config.station?.id != stationId || !config.active) return

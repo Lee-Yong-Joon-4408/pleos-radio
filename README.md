@@ -25,7 +25,8 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 | Station List | 전체/즐겨찾기 필터, 밴드 스캔(진행 표시), 신호 세기, 목록에서 즐겨찾기 |
 | 방송 정보 | DAB+ 배지, 채널·주파수, 프로그램명, DLS(라디오텍스트) 6초 순환 |
 | 상단 바 | Radio › 밴드 경로, 실시간 시계 |
-| 좌측 레일 | Home(라디오로 복귀), Radio, Media(미니 플레이어), Settings(자막 엔진·음성 모델·자막 언어·프리셋 초기화) |
+| 실시간 받아쓰기 (FM·AM) | 한국어 방송의 음성을 번역 없이 그대로 텍스트로 같은 5줄 패널에 표시(On/Off 메뉴). 엔진은 번역 자막과 동일 |
+| 좌측 레일 | Home(라디오로 복귀), Radio, Media(미니 플레이어), Settings(자막 엔진·음성 모델·자막 언어·FM/AM 받아쓰기·프리셋 초기화) |
 | 스티어링 휠 미디어 키 | 다음/이전/재생·정지 |
 
 | 실시간 번역 자막 | DAB·DRM(영어·독일어·힌디어·벵골어·마라티어·구자라트어 방송)의 음성을 인식해 선택한 언어(한국어·English·日本語·中文·Off)로 번역, 메인 화면 하단 5줄 패널에 표시. 기본은 **무료 온디바이스**(whisper.cpp + ML Kit) |
@@ -47,6 +48,8 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 
 ## 실시간 번역 자막 (DAB · DRM)
 재생 중인 오디오(ExoPlayer가 디코딩한 PCM)를 16 kHz 모노로 바꿔 약 6초 단위로 음성 인식 → 번역하고, 메인 화면 하단 5줄 패널에 최신 문장이 아래쪽에 오도록 표시합니다. 무음은 건너뛰고, 처리가 밀리면 가장 최근 구간만 처리합니다. 방송 언어: BBC en-GB, 독일 de-DE, AIR hi-IN / bn-IN / mr-IN / gu-IN.
+
+FM·AM(한국어 방송)은 같은 패널에서 **번역 없이 받아쓰기만** 합니다(헤더 "Live transcript · 한국어", 오른쪽 메뉴는 On/Off, Settings → FM / AM transcript). 음악 위주 방송에서는 인식할 말이 적어 자막이 드물게 나옵니다.
 
 ### 기본: 온디바이스 (무료 · 오프라인)
 * **음성 인식:** [whisper.cpp](https://github.com/ggml-org/whisper.cpp) v1.9.5 (MIT, CMake FetchContent로 릴리스 tarball을 SHA-256 검증 후 빌드, arm64-v8a). JNI: `app/src/main/cpp/whisper_jni.cpp`.

@@ -22,7 +22,8 @@ enum class Band(val label: String) {
  * @param stream real audio source; null means the simulated tuner audio is used.
  * @param logoUrl station logo image (broadcaster's own image URL); null shows the band artwork.
  * @param logoOnDark the logo is light-on-transparent and needs a dark card behind it.
- * @param speechLanguage broadcast language (BCP-47, e.g. "de-DE") for live captions; null = Korean / no captions.
+ * @param speechLanguage broadcast language (BCP-47, e.g. "de-DE") for live captions; null = no captions.
+ * @param translateCaptions true: captions are translated (DAB / DRM); false: speech is shown as-is (FM / AM).
  */
 data class Station(
     val id: String,
@@ -40,6 +41,7 @@ data class Station(
     val logoUrl: String? = null,
     val logoOnDark: Boolean = false,
     val speechLanguage: String? = null,
+    val translateCaptions: Boolean = true,
 ) {
     /** "89.1 MHz", "603 kHz", "12B  225.648 MHz", "CH 9-1 (RF 52)  701 MHz". */
     val frequencyLabel: String

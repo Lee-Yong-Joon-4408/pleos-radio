@@ -51,6 +51,10 @@ data class CaptionState(
     /** Model download progress 0..1 while [status] is DOWNLOADING. */
     val progress: Float = 0f,
     val modelSizeMb: Int = 0,
+    /** true: speech is shown as text without translation (FM / AM). */
+    val transcribeOnly: Boolean = false,
+    /** On/off switch for transcribe-only captions. */
+    val transcriptEnabled: Boolean = true,
 )
 
 object CaptionLanguages {
@@ -65,6 +69,7 @@ object CaptionLanguages {
         "bn" -> "বাংলা"
         "mr" -> "मराठी"
         "gu" -> "ગુજરાતી"
+        "ko" -> "한국어"
         else -> speechLanguage
     }
 

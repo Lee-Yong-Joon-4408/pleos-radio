@@ -50,6 +50,8 @@ data class RadioUiState(
     val captionEngine: CaptionEngineType = CaptionEngineType.ON_DEVICE,
     val whisperModel: WhisperModel = WhisperModel.BASE,
     val modelStates: Map<WhisperModel, WhisperModelStore.State> = emptyMap(),
+    /** FM / AM speech-to-text captions on/off. */
+    val transcriptEnabled: Boolean = true,
     val message: String? = null,
 ) {
     val isFavorite: Boolean get() = current?.id in favorites
@@ -81,6 +83,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
             apiKeySource = apiKeySource(),
             captionEngine = CaptionEngineType.fromName(prefs.captionEngine()),
             whisperModel = WhisperModel.fromName(prefs.whisperModel()),
+            transcriptEnabled = prefs.transcriptEnabled(),
         )
     )
     val ui: StateFlow<RadioUiState> = _ui.asStateFlow()
@@ -104,6 +107,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
                     apiKey = key,
                     model = s.whisperModel,
                     modelState = states[s.whisperModel] ?: WhisperModelStore.State.Missing,
+                    transcriptEnabled = s.transcriptEnabled,
                 )
             }
                 .distinctUntilChanged()
@@ -268,6 +272,11 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     fun setCaptionLanguage(language: CaptionLanguage) {
         _ui.update { it.copy(captionLanguage = language) }
         prefs.saveCaptionLanguage(language.name)
+    }
+
+    fun setTranscriptEnabled(enabled: Boolean) {
+        _ui.update { it.copy(transcriptEnabled = enabled) }
+        prefs.saveTranscriptEnabled(enabled)
     }
 
     fun setCaptionEngine(engine: CaptionEngineType) {

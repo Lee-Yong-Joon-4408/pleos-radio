@@ -65,7 +65,7 @@ class StationTest {
         assertTrue(catalog.scan(Band.FM).all { it.logoUrl != null })
     }
 
-    @Test fun dabAndDrmCarryBroadcastLanguageForCaptionsKoreanBandsDoNot() {
+    @Test fun captionLanguagesPerBand() {
         val dab = catalog.stations(Band.DAB)
         assertTrue(dab.filter { it.name.startsWith("BBC") }.all { it.speechLanguage == "en-GB" })
         assertTrue(dab.filterNot { it.name.startsWith("BBC") }.all { it.speechLanguage == "de-DE" })
@@ -74,9 +74,12 @@ class StationTest {
         assertEquals("bn-IN", drm["drm_air_kolkata_a"])
         assertEquals("gu-IN", drm["drm_air_rajkot"])
         assertEquals("hi-IN", drm["drm_air_lucknow"])
-        listOf(Band.FM, Band.AM, Band.ATSC).forEach { band ->
-            assertTrue(catalog.stations(band).all { it.speechLanguage == null })
+        assertTrue((dab + catalog.stations(Band.DRM)).all { it.translateCaptions })
+        // FM / AM: Korean speech shown as text without translation; ATSC has no captions.
+        listOf(Band.FM, Band.AM).forEach { band ->
+            assertTrue(catalog.stations(band).all { it.speechLanguage == "ko-KR" && !it.translateCaptions })
         }
+        assertTrue(catalog.stations(Band.ATSC).all { it.speechLanguage == null })
     }
 
     @Test fun atscIsKoreanTerrestrialTvWithVirtualAndRfChannel() {

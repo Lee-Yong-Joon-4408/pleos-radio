@@ -84,9 +84,9 @@ fun RadioScreen(ui: RadioUiState, vm: RadioViewModel) {
             NowPlaying(ui, vm::retry)
             PlaybackControls(ui, vm, Modifier.padding(start = 310.dp))
             Spacer(Modifier.weight(1f))
-            // Live translation captions for foreign-language stations (DAB / DRM).
+            // Live captions: translated for DAB / DRM, speech-to-text for FM / AM.
             if (ui.caption.available) {
-                CaptionPanel(ui.caption, vm::setCaptionLanguage, onDownloadModel = { vm.downloadModel() })
+                CaptionPanel(ui.caption, vm::setCaptionLanguage, vm::setTranscriptEnabled, onDownloadModel = { vm.downloadModel() })
                 Spacer(Modifier.height(8.dp))
             }
             PresetBar(ui, vm)

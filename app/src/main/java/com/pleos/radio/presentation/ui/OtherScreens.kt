@@ -130,6 +130,9 @@ fun SettingsScreen(ui: RadioUiState, vm: RadioViewModel) {
                 }
             }
         }
+        SettingRow("FM / AM transcript", "Show Korean speech as text in the caption panel") {
+            ChipRow(listOf(true, false), ui.transcriptEnabled, { if (it) "On" else "Off" }, vm::setTranscriptEnabled)
+        }
         SettingRow("Reset presets", "Restore the factory preset list for every band") {
             Text(
                 "Reset",

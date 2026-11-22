@@ -46,6 +46,7 @@ class CaptionsTest {
     @Test fun languageHelpers() {
         assertEquals("de", CaptionLanguages.translationCode("de-DE"))
         assertEquals("বাংলা", CaptionLanguages.nativeName("bn-IN"))
+        assertEquals("한국어", CaptionLanguages.nativeName("ko-KR"))
         assertTrue(CaptionLanguages.sameLanguage("en-GB", CaptionLanguage.ENGLISH))
         assertFalse(CaptionLanguages.sameLanguage("en-GB", CaptionLanguage.KOREAN))
         assertFalse(CaptionLanguages.sameLanguage("hi-IN", CaptionLanguage.OFF))

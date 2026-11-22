@@ -59,6 +59,7 @@ val CAPTION_PANEL_HEIGHT = 158.dp
 fun CaptionPanel(
     state: CaptionState,
     onSelectLanguage: (CaptionLanguage) -> Unit,
+    onTranscriptToggle: (Boolean) -> Unit,
     onDownloadModel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -75,8 +76,11 @@ fun CaptionPanel(
             Icon(Icons.Filled.Translate, null, tint = RadioColors.AccentBright, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                if (state.target == CaptionLanguage.OFF) "Live translation · ${state.sourceLabel}"
-                else "Live translation · ${state.sourceLabel} → ${state.target.label}",
+                when {
+                    state.transcribeOnly -> "Live transcript · ${state.sourceLabel}"
+                    state.target == CaptionLanguage.OFF -> "Live translation · ${state.sourceLabel}"
+                    else -> "Live translation · ${state.sourceLabel} → ${state.target.label}"
+                },
                 color = RadioColors.TextSecondary, fontSize = 17.sp, fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.width(10.dp))
@@ -88,7 +92,8 @@ fun CaptionPanel(
             Spacer(Modifier.width(12.dp))
             StatusTag(state)
             Spacer(Modifier.weight(1f))
-            LanguageMenu(state.target, onSelectLanguage)
+            if (state.transcribeOnly) TranscriptMenu(state.transcriptEnabled, onTranscriptToggle)
+            else LanguageMenu(state.target, onSelectLanguage)
         }
         when (state.status) {
             CaptionStatus.NEED_MODEL -> ModelPrompt(state, onDownloadModel)
@@ -140,7 +145,7 @@ private fun StatusTag(state: CaptionState) {
         CaptionStatus.TRANSLATING -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(14.dp), color = RadioColors.AccentBright, strokeWidth = 2.dp)
             Spacer(Modifier.width(6.dp))
-            Text("Translating…", color = RadioColors.Muted, fontSize = 15.sp)
+            Text(if (state.transcribeOnly) "Transcribing…" else "Translating…", color = RadioColors.Muted, fontSize = 15.sp)
         }
         CaptionStatus.LISTENING -> Text("Listening", color = RadioColors.Muted, fontSize = 15.sp)
         else -> Unit
@@ -152,8 +157,11 @@ private fun CaptionLines(state: CaptionState) {
     // Five 18sp lines; the text scrolls so the newest words are always at the bottom.
     val scroll = rememberScrollState()
     val (text, color) = when (state.status) {
-        CaptionStatus.OFF ->
-            (if (state.target == CaptionLanguage.OFF) "Captions are off. Choose a language on the right." else "Captions start when playback starts.") to RadioColors.Muted
+        CaptionStatus.OFF -> when {
+            state.transcribeOnly && !state.transcriptEnabled -> "Transcript is off. Turn it on with the menu on the right."
+            !state.transcribeOnly && state.target == CaptionLanguage.OFF -> "Captions are off. Choose a language on the right."
+            else -> "Captions start when playback starts."
+        } to RadioColors.Muted
         CaptionStatus.NEED_MODEL, CaptionStatus.DOWNLOADING -> "" to RadioColors.Muted
         CaptionStatus.NEED_KEY ->
             "Add a Google Cloud API key (Speech-to-Text + Translation) in Settings to see live captions." to RadioColors.Muted
@@ -163,6 +171,32 @@ private fun CaptionLines(state: CaptionState) {
     LaunchedEffect(text) { scroll.animateScrollTo(scroll.maxValue) }
     Box(Modifier.fillMaxWidth().height(CAPTION_BODY_HEIGHT).padding(top = 2.dp)) {
         Text(text, color = color, fontSize = 18.sp, lineHeight = 23.sp, modifier = Modifier.verticalScroll(scroll))
+    }
+}
+
+/** FM / AM: speech is shown as-is, so the menu is just On / Off. */
+@Composable
+private fun TranscriptMenu(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier
+                .border(1.dp, RadioColors.Outline, RoundedCornerShape(14.dp))
+                .clickable(role = Role.DropdownList, onClickLabel = "Transcript on or off") { open = true }
+                .padding(start = 12.dp, end = 4.dp, top = 1.dp, bottom = 1.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(if (enabled) "On" else "Off", color = RadioColors.Text, fontSize = 16.sp)
+            Icon(Icons.Filled.ArrowDropDown, null, tint = RadioColors.TextSecondary, modifier = Modifier.size(22.dp))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            listOf(true to "On", false to "Off").forEach { (value, label) ->
+                DropdownMenuItem(
+                    text = { Text(label, fontSize = 18.sp, fontWeight = if (value == enabled) FontWeight.SemiBold else FontWeight.Normal) },
+                    onClick = { open = false; onToggle(value) },
+                )
+            }
+        }
     }
 }
 

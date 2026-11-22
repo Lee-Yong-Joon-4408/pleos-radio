@@ -35,6 +35,9 @@ class RadioPreferences(context: Context) {
     fun cloudApiKey(): String = prefs.getString(KEY_CLOUD_KEY, "").orEmpty()
     fun saveCloudApiKey(key: String) = prefs.edit().putString(KEY_CLOUD_KEY, key.trim()).apply()
 
+    fun transcriptEnabled(): Boolean = prefs.getBoolean(KEY_TRANSCRIPT, true)
+    fun saveTranscriptEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_TRANSCRIPT, enabled).apply()
+
     fun captionEngine(): String? = prefs.getString(KEY_ENGINE, null)
     fun saveCaptionEngine(name: String) = prefs.edit().putString(KEY_ENGINE, name).apply()
 
@@ -51,6 +54,7 @@ class RadioPreferences(context: Context) {
         const val KEY_CAPTION = "caption_language"
         const val KEY_CLOUD_KEY = "google_cloud_api_key"
         const val KEY_ENGINE = "caption_engine"
+        const val KEY_TRANSCRIPT = "transcript_enabled"
         const val KEY_WHISPER_MODEL = "whisper_model"
     }
 }
