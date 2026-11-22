@@ -31,11 +31,11 @@ class StationTest {
         assertEquals(listOf("FM", "AM", "DAB", "DRM", "ATSC"), Band.entries.map { it.label })
     }
 
-    @Test fun fmAmDabHaveRealStreamsOthersAreSimulated() {
-        listOf(Band.FM, Band.AM, Band.DAB).forEach { band ->
+    @Test fun onlyAtscIsSimulated() {
+        listOf(Band.FM, Band.AM, Band.DAB, Band.DRM).forEach { band ->
             assertTrue(catalog.stations(band).all { it.stream != null })
         }
-        listOf(Band.DRM, Band.ATSC).forEach { band ->
+        listOf(Band.ATSC).forEach { band ->
             assertTrue(catalog.stations(band).all { it.stream == null })
         }
     }
@@ -50,18 +50,28 @@ class StationTest {
         assertEquals(listOf(603, 711, 837, 972, 1134, 1188), catalog.stations(Band.AM).map { it.frequencyKhz })
     }
 
+    @Test fun drmIsAllIndiaRadioOnRealDrmFrequencies() {
+        val drm = catalog.stations(Band.DRM)
+        assertEquals(listOf(549, 612, 648, 738, 783, 801, 810, 999, 1044, 1368), drm.map { it.frequencyKhz })
+        assertTrue(drm.all { (it.stream as StreamSource.Direct).url.let { u -> u.startsWith("https://") && u.endsWith(".m3u8") } })
+        assertEquals(
+            "https://d3r9rhourdc02u.cloudfront.net/assets/radio/airdelhi06/air006_Auto.m3u8",
+            (drm.first { it.id == "drm_air_delhi_a" }.stream as StreamSource.Direct).url,
+        )
+    }
+
     @Test fun atscShowsVirtualChannel() {
         assertEquals("CH 14-1  479 MHz", catalog.stations(Band.ATSC).first().frequencyLabel)
     }
 
     @Test fun amAndDrmUseKhz() {
         assertEquals("603 kHz", catalog.stations(Band.AM).first().frequencyLabel)
-        assertEquals("3955 kHz", catalog.stations(Band.DRM).first().frequencyLabel)
+        assertEquals("549 kHz", catalog.stations(Band.DRM).first().frequencyLabel)
     }
 
     @Test fun infoLineStartsWithSloganAndCycles() {
-        val s = catalog.stations(Band.DRM).first()
-        assertEquals("Digital shortwave news, worldwide", s.infoLine(0))
+        val s = catalog.stations(Band.ATSC).first()
+        assertEquals("Round-the-clock UHD news audio", s.infoLine(0))
         assertEquals(s.dynamicLabels[0], s.infoLine(1))
         assertEquals(s.infoLine(0), s.infoLine(s.dynamicLabels.size + 1))
     }

@@ -92,7 +92,7 @@ private fun MiniPlayer(ui: RadioUiState, vm: RadioViewModel) {
 @Composable
 fun SettingsScreen(ui: RadioUiState, vm: RadioViewModel) {
     Column(Modifier.fillMaxSize().padding(horizontal = 52.dp, vertical = 36.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SettingRow("Simulated audio (DRM · ATSC)", "FM, AM and DAB always play the broadcaster's live internet stream; other bands use a generated tone") {
+        SettingRow("Simulated audio (ATSC)", "FM, AM, DAB and DRM always play the broadcaster's live internet stream; ATSC uses a generated tone") {
             Switch(
                 checked = ui.audioEnabled,
                 onCheckedChange = vm::setAudioEnabled,

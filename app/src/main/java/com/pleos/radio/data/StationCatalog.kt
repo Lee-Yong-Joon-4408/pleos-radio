@@ -10,8 +10,9 @@ import kotlin.random.Random
  *
  * Third-party Pleos Connect / AAOS apps cannot open the vehicle's broadcast-radio HAL
  * (`android.hardware.radio` is a system API). FM and AM therefore list the real Seoul-area
- * stations and DAB the BBC National DAB lineup plus German DAB+ stations, each playing the broadcaster's official internet
- * stream ([StreamSource]); DRM and ATSC use a fixed simulated service list. A HAL-backed implementation can replace this class later.
+ * stations, DAB the BBC National DAB lineup plus German DAB+ stations and DRM All India Radio's DRM
+ * transmitters, each playing the broadcaster's official internet stream ([StreamSource]); ATSC uses
+ * a fixed simulated service list. A HAL-backed implementation can replace this class later.
  */
 class StationCatalog(private val random: Random = Random.Default) {
 
@@ -49,8 +50,19 @@ class StationCatalog(private val random: Random = Random.Default) {
             "https://as-hls-ww-live.akamaized.net/pool_87948813/live/ww/bbc_world_service/bbc_world_service.isml/bbc_world_service-audio%3d96000.norewind.m3u8"
         )
 
-        fun drm(id: String, name: String, khz: Int, programme: String, slogan: String, genre: String, vararg dls: String, signal: Int = 3) =
-            Station(id, Band.DRM, name, khz, null, "DRM", programme, slogan, genre, dls.toList(), signal)
+        /** Prasar Bharati stream hosts: CloudFront paths ("airdelhi06/air006") or full wavespb URLs. */
+        const val WAVES = "https://radio.wavespb.com/live/"
+
+        fun drm(id: String, name: String, khz: Int, programme: String, genre: String, stream: String, pureDrm: Boolean = false) =
+            Station(
+                id, Band.DRM, name, khz, null, "DRM", "AIR $programme",
+                if (pureDrm) "Pure DRM · Akashvani live stream" else "Akashvani live stream · worldwide",
+                genre, signal = 4,
+                stream = StreamSource.Direct(
+                    if (stream.startsWith("https://")) stream
+                    else "https://d3r9rhourdc02u.cloudfront.net/assets/radio/${stream.substringBefore('/')}/${stream.substringAfter('/')}_Auto.m3u8"
+                ),
+            )
 
         fun fm(id: String, name: String, mhz: Double, programme: String, genre: String, stream: StreamSource) =
             Station(id, Band.FM, name, Math.round(mhz * 1000).toInt(), null, "FM", programme,
@@ -108,19 +120,25 @@ class StationCatalog(private val random: Random = Random.Default) {
                 "https://dispatcher.rndfnk.com/rbb/radioeins/live/mp3/mid"),
         )
 
+        /**
+         * All India Radio (Akashvani) DRM medium-wave transmitters. DRM frequencies per DRM.org's broadcast
+         * schedule (updated 26 Oct 2026); programme per transmitter per the VU2JOS Akashvani frequency list.
+         * Streams are Prasar Bharati's official live streams (24 h; simulcast transmitters run DRM part-time).
+         */
         val DRM = listOf(
-            drm("drm_global", "Global News 24", 3_955, "World at Six", "Digital shortwave news, worldwide", "News",
-                "Live: Asia-Pacific headlines"),
-            drm("drm_asia", "Asia Pacific Voice", 7_330, "Pacific Morning", "Voices from across the region", "Talk",
-                "Interview: ocean research in Busan"),
-            drm("drm_euroclassic", "Euro Classic", 6_095, "Concert Hall", "Classical music in digital clarity", "Classical",
-                "Now playing: Brahms – Symphony No. 4", signal = 2),
-            drm("drm_science", "Science Hour", 9_620, "Discovery", "Curious minds on air", "Science",
-                "Today: the physics of radio waves", signal = 2),
-            drm("drm_jazz", "Shortwave Jazz", 11_690, "Night Owls", "Jazz across the ionosphere", "Jazz",
-                "Now playing: Blue Horizon – Mira Quartet"),
-            drm("drm_test", "DRM Test Radio", 15_120, "Test Transmission", "xHE-AAC digital audio test", "Test",
-                "Mode B · 10 kHz · 64-QAM", signal = 4),
+            drm("drm_air_mumbai_b", "AIR Mumbai Asmita", 549, "Mumbai B · Asmita", "Marathi", "airmum04/air052"),
+            drm("drm_air_patna", "AIR Patna", 612, "Patna", "Hindi / Bhojpuri", WAVES + "c398958b3874b441/c398958b3874b441.m3u8"),
+            drm("drm_air_kolkata_a", "AIR Kolkata Geetanjali", 648, "Kolkata A · Geetanjali", "Bengali", "airkol01/air065"),
+            drm("drm_air_lucknow", "AIR Lucknow", 738, "Lucknow", "Hindi", WAVES + "75c01e54cb46ad29/75c01e54cb46ad29.m3u8"),
+            drm("drm_air_vb_chennai", "Vividh Bharati", 783, "Chennai C · Vividh Bharati", "Hindi film music",
+                WAVES + "146ed6ec6dea5a24/146ed6ec6dea5a24.m3u8", pureDrm = true),
+            drm("drm_air_rajkot", "AIR Rajkot", 801, "Rajkot", "Gujarati", WAVES + "a70ba921067c93ce/a70ba921067c93ce.m3u8"),
+            drm("drm_air_delhi_a", "AIR Delhi Indraprastha", 810, "New Delhi A · Indraprastha", "Hindi / English", "airdelhi06/air006"),
+            drm("drm_air_kolkata_b", "AIR Kolkata Sanchayita", 999, "Kolkata B · Sanchayita", "Bengali", "airkol02/air066"),
+            drm("drm_air_mumbai_a", "AIR Mumbai Samvadita", 1_044, "Mumbai A · Samvadita", "Hindi / English", "airmum03/air051",
+                pureDrm = true),
+            drm("drm_air_vb_delhi", "Vividh Bharati Delhi", 1_368, "New Delhi C · Vividh Bharati", "Hindi film music",
+                "airdelhi04/air004", pureDrm = true),
         )
 
         private fun cbs(stream: String) =
