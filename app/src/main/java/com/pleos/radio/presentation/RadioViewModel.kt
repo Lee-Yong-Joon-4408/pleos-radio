@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -52,11 +53,17 @@ data class RadioUiState(
     val modelStates: Map<WhisperModel, WhisperModelStore.State> = emptyMap(),
     /** FM / AM speech-to-text captions on/off. */
     val transcriptEnabled: Boolean = true,
+    /** False while the car forbids video (driving). */
+    val videoAllowed: Boolean = false,
+    /** TV video shown in the large view. */
+    val videoExpanded: Boolean = false,
     val message: String? = null,
 ) {
     val isFavorite: Boolean get() = current?.id in favorites
     val listedStations: List<Station> get() = RadioLogic.filter(stations, favorites, favoritesOnly)
     val presetPageCount: Int get() = RadioLogic.pageCount(presets.size)
+    /** TV video is decoded and shown: TV station, playing, parked. */
+    val showVideo: Boolean get() = current?.hasVideo == true && playing && videoAllowed
 }
 
 class RadioViewModel(app: Application) : AndroidViewModel(app) {
@@ -134,6 +141,13 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch { translator.state.collect { c -> _ui.update { it.copy(caption = c) } } }
         viewModelScope.launch { models.states.collect { m -> _ui.update { it.copy(modelStates = m) } } }
+        // Decode TV video only while it can be shown; leave the large view when it can't.
+        viewModelScope.launch {
+            _ui.map { it.showVideo }.distinctUntilChanged().collect { show ->
+                audio.setVideoEnabled(show)
+                if (!show) _ui.update { it.copy(videoExpanded = false) }
+            }
+        }
         // Rotate the dynamic label (DLS / radiotext) like a real receiver.
         viewModelScope.launch {
             while (true) {
@@ -292,6 +306,13 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(captionLanguage = language) }
         prefs.saveCaptionLanguage(language.name)
     }
+
+    /** Player for rendering TV video. */
+    val videoPlayer get() = audio.videoPlayer
+
+    fun setVideoAllowed(allowed: Boolean) = _ui.update { it.copy(videoAllowed = allowed) }
+
+    fun setVideoExpanded(expanded: Boolean) = _ui.update { it.copy(videoExpanded = expanded && it.showVideo) }
 
     fun setTranscriptEnabled(enabled: Boolean) {
         _ui.update { it.copy(transcriptEnabled = enabled) }

@@ -114,6 +114,10 @@ class HybridRadioAudio(
         streaming.stop()
     }
 
+    override val videoPlayer: androidx.media3.common.Player get() = streaming.videoPlayer
+
+    override fun setVideoEnabled(enabled: Boolean) = streaming.setVideoEnabled(enabled)
+
     override fun release() {
         stopAll()
         simulated.release()

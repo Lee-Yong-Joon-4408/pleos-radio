@@ -40,4 +40,10 @@ interface RadioAudioOutput {
     fun stop()
 
     fun release()
+
+    /** Player whose video can be rendered (TV stations); null when the output has no video path. */
+    val videoPlayer: androidx.media3.common.Player? get() = null
+
+    /** Decode the stream's video track (only while it may be shown: TV station, parked, playing). */
+    fun setVideoEnabled(enabled: Boolean) {}
 }

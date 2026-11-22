@@ -25,6 +25,7 @@ enum class Band(val label: String) {
  * @param speechLanguage broadcast language (BCP-47, e.g. "de-DE") for live captions; null = no captions.
  * @param translateCaptions true: captions are translated (DAB / DRM); false: speech is shown as-is (FM / AM).
  * @param virtualRf virtual RF-network channel: shown as received over RF, audio actually relayed from its IP stream.
+ * @param hasVideo the stream carries TV video that may be shown while parked (ATSC).
  */
 data class Station(
     val id: String,
@@ -44,6 +45,7 @@ data class Station(
     val speechLanguage: String? = null,
     val translateCaptions: Boolean = true,
     val virtualRf: Boolean = false,
+    val hasVideo: Boolean = false,
 ) {
     /** Id of the IP station this virtual RF channel relays (itself for ordinary stations). */
     val baseId: String get() = id.removeSuffix(RF_SUFFIX)

@@ -14,7 +14,7 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 | 화면 요소 | 동작 |
 | :-- | :-- |
 | FM / AM / DAB / DRM / ATSC 탭 | 밴드 전환, 밴드별 마지막 방송 복원 |
-| ATSC (실제 방송) | 한국 지상파 TV 4채널의 오디오 (KBS 1TV·2TV, EBS 1TV·2TV) |
+| ATSC (실제 방송) | 한국 지상파 TV 4채널 (KBS 1TV·2TV, EBS 1TV·2TV). **정차 중에는 실시간 영상 표시**(누르면 크게 보기), 주행 중에는 소리만 |
 | DRM (실제 방송) | 인도 All India Radio DRM 송신소 10곳 (해외 재생) |
 | DAB (실제 방송) | 영국 BBC National DAB 10개(World Service만 해외 재생) + 독일 DAB+ 10개(해외 재생) |
 | FM · AM (실제 방송) | 서울 FM 12개 채널(KBS·MBC·SBS·CBS·EBS·YTN)과 AM 6개 채널(KBS 해피FM 603·1라디오 711·한민족방송 972·3라디오 1134, CBS 837, 극동방송 1188)의 공식 인터넷 실시간 방송 재생, `LIVE`/`Connecting…` 표시, 오류 시 `Retry` |
@@ -44,6 +44,7 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 * **DAB: 독일 DAB+ 10개.** Deutschlandfunk·Deutschlandfunk Kultur·Deutschlandfunk Nova(전국 Bundesmux 5C), 1LIVE·WDR 2(WDR 11D), Bayern 3(BR 11D), NDR 2(NDR 7A, 하노버), SWR3(SWR 9D, 슈투트가르트), hr3(hr 7B), radioeins(rbb 7D). 블록은 독일어 위키백과 「Liste der DAB-Sender in Deutschland」 기준이며, 공영방송 공식 MP3 스트림으로 **해외에서도 재생**됩니다.
 * **DRM: 인도 All India Radio(Akashvani).** AIR의 DRM 중파 송신소 10곳(Mumbai B 549 Asmita, Patna 612, Kolkata A 648 Geetanjali, Lucknow 738, Chennai C 783 Vividh Bharati, Rajkot 801, New Delhi A 810 Indraprastha, Kolkata B 999 Sanchayita, Mumbai A 1044 Samvadita, New Delhi C 1368 Vividh Bharati)을 Prasar Bharati 공식 HLS 스트림으로 재생합니다(해외 재생 가능). DRM 주파수는 DRM.org 방송 일정(2026-10-26 갱신), 송신소별 채널은 VU2JOS Akashvani 주파수표 기준입니다. 783·1044·1368 kHz는 순수 DRM, 나머지는 시간대별 동시방송입니다.
 * **ATSC: 한국 지상파 TV(오디오).** KBS 2TV(7-1, UHD RF 56), KBS 1TV(9-1, UHD RF 52), EBS 1TV(10-1, RF 18), EBS 2TV(10-2, RF 18)의 공식 실시간 TV 스트림에서 소리만 재생합니다(영상은 디코딩하지 않음). 채널 정보는 각 방송 위키백과 문서 기준이며, MBC·SBS는 외부 앱의 실시간 TV 스트림 이용을 허용하지 않아 제외했습니다.
+* **ATSC 영상:** 정차 중(P)에는 Now Playing 자리에 16:9 실시간 영상을 표시하고, 영상을 누르면 크게 보기(다시 누르면 복귀)로 전환합니다. 차량의 운전자 주의 분산 제한(`CarUxRestrictionsManager`, `UX_RESTRICTIONS_NO_VIDEO`)이 걸리면(주행 중) 영상 대신 "Video is paused while driving" 안내를 보여 주고 소리는 계속 재생하며, 영상 디코딩도 멈춥니다. 차량이 아닌 기기에서는 항상 표시합니다.
 * `SimulatedBroadcastAudio`(합성 톤)는 현재 쓰이지 않으며, 스트림이 없는 방송을 위한 대체 경로로 남겨 두었습니다.
 
 `HybridRadioAudio`가 방송마다 두 경로 중 하나를 고르고, 미디어 오디오 포커스를 처리합니다(영구 상실 시 일시정지, 일시 상실 시 중단 후 재개, 덕킹).
@@ -103,5 +104,5 @@ app/src/main/java/com/pleos/radio/
 ├─ data/    StationCatalog.kt, RadioPreferences.kt, StreamResolver.kt,
 │           translate/(CaptionEngines, WhisperNative, WhisperModelStore, OnDeviceTranslator, GoogleCloudClient)
 ├─ audio/   RadioAudioOutput.kt(AudioStatus, ReceptionPath), HybridRadioAudio.kt, StreamingRadioAudio.kt, PcmTap.kt, SimulatedBroadcastAudio.kt
-└─ presentation/  MainActivity, RadioViewModel, LiveTranslator, ui/(RadioApp, RadioScreen, ReceptionBackdrop, CaptionPanel, StationListPanel, Artwork, OtherScreens, theme)
+└─ presentation/  MainActivity, RadioViewModel, LiveTranslator, ux/UxRestrictionsMonitor, ui/(RadioApp, RadioScreen, TvVideo, ReceptionBackdrop, CaptionPanel, StationListPanel, Artwork, OtherScreens, theme)
 ```

@@ -145,6 +145,9 @@ class StationTest {
         assertEquals("CH 9-1 (RF 52)  701 MHz", atsc.first { it.id == "atsc_kbs1" }.frequencyLabel)
         assertEquals("CH 10-2 (RF 18)  497 MHz", atsc.first { it.id == "atsc_ebs2" }.frequencyLabel)
         assertEquals(listOf("ATSC 3.0", "ATSC 3.0", "ATSC", "ATSC"), atsc.map { it.badge })
+        // TV video: every ATSC channel (incl. its virtual RF twins), no radio station.
+        assertTrue(catalog.stations(Band.ATSC).all { it.hasVideo })
+        listOf(Band.FM, Band.AM, Band.DAB, Band.DRM).forEach { band -> assertTrue(catalog.stations(band).none { it.hasVideo }) }
     }
 
     @Test fun amAndDrmUseKhz() {

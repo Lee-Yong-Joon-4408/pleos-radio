@@ -63,11 +63,20 @@ class StreamingRadioAudio(
         .setHandleAudioBecomingNoisy(true)
         .build()
         .apply {
-            // Audio-only app: TV streams (ATSC band) are played without decoding their video track.
+            // Video is decoded only while it may be shown (TV station, parked); otherwise audio only.
             trackSelectionParameters = trackSelectionParameters.buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
                 .build()
         }
+
+    /** The underlying player, for attaching a video surface. */
+    val videoPlayer: Player get() = player
+
+    fun setVideoEnabled(enabled: Boolean) {
+        val params = player.trackSelectionParameters
+        if (params.disabledTrackTypes.contains(C.TRACK_TYPE_VIDEO) == !enabled) return
+        player.trackSelectionParameters = params.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !enabled).build()
+    }
 
     private var station: Station? = null
     private var loadJob: Job? = null

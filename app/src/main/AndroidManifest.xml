@@ -18,6 +18,9 @@
         android:theme="@style/Theme.PleosRadio"
         tools:targetApi="34">
 
+        <!-- Optional android.car library (UX restrictions for TV video); absent on phones. -->
+        <uses-library android:name="android.car" android:required="false" />
+
         <!-- Glanceable media UI: allowed while driving on AAOS. -->
         <meta-data android:name="distractionOptimized" android:value="true" />
 

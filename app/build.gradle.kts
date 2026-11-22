@@ -50,6 +50,9 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    // android.car (CarUxRestrictionsManager): present on Android Automotive, guarded at runtime elsewhere.
+    useLibrary("android.car")
+
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")

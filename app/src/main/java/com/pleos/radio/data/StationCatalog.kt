@@ -195,7 +195,7 @@ class StationCatalog(private val random: Random = Random.Default) {
 
         fun atsc(id: String, name: String, virtual: String, rf: Int, badge: String, programme: String, genre: String, stream: StreamSource) =
             Station(id, Band.ATSC, name, uhfCentreKhz(rf), "$virtual (RF $rf)", badge, programme,
-                "Live TV audio · official stream", genre, signal = 4, stream = stream)
+                "Live TV · official stream", genre, signal = 4, stream = stream, hasVideo = true)
 
         fun am(id: String, name: String, khz: Int, programme: String, genre: String, stream: StreamSource,
                slogan: String = "Live internet simulcast") =

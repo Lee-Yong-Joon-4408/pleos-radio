@@ -84,8 +84,10 @@ fun RadioScreen(ui: RadioUiState, vm: RadioViewModel) {
                 StationListButton(vm::openStationList)
             }
             Spacer(Modifier.height(12.dp))
-            NowPlaying(ui, vm::retry)
-            PlaybackControls(ui, vm, Modifier.padding(start = 310.dp))
+            NowPlaying(ui, vm)
+            // Controls line up with the info column, which moves right when the wider TV frame is shown.
+            val artWidth = if (ui.current?.hasVideo == true) VIDEO_WIDTH else 258.dp
+            PlaybackControls(ui, vm, Modifier.padding(start = artWidth + 52.dp))
             Spacer(Modifier.weight(1f))
             // Live captions: translated for DAB / DRM, speech-to-text for FM / AM.
             if (ui.caption.available) {
@@ -94,6 +96,10 @@ fun RadioScreen(ui: RadioUiState, vm: RadioViewModel) {
             }
             PresetBar(ui, vm)
             Spacer(Modifier.height(10.dp))
+        }
+        val player = vm.videoPlayer
+        if (ui.videoExpanded && ui.showVideo && player != null) {
+            ExpandedVideo(player, ui.current?.id, ui.current?.name.orEmpty()) { vm.setVideoExpanded(false) }
         }
     }
 }
@@ -164,10 +170,25 @@ private fun StationListButton(onClick: () -> Unit) {
 // --- now playing --------------------------------------------------------------------------
 
 @Composable
-private fun NowPlaying(ui: RadioUiState, onRetry: () -> Unit) {
+private fun NowPlaying(ui: RadioUiState, vm: RadioViewModel) {
+    val onRetry = vm::retry
     val station = ui.current
+    val player = vm.videoPlayer
     Row(Modifier.height(250.dp)) {
-        StationArtwork(station, ui.band, ui.playing, Modifier.size(width = 258.dp, height = 250.dp))
+        when {
+            // TV station: live video while parked, a notice while driving.
+            station?.hasVideo == true && ui.showVideo && player != null && !ui.videoExpanded ->
+                Box(Modifier.height(250.dp), contentAlignment = Alignment.Center) {
+                    VideoPane(player, station.id) { vm.setVideoExpanded(true) }
+                }
+            station?.hasVideo == true && ui.playing && !ui.videoAllowed ->
+                Box(Modifier.height(250.dp), contentAlignment = Alignment.Center) { VideoBlockedPane() }
+            station?.hasVideo == true ->
+                Box(Modifier.size(VIDEO_WIDTH, 250.dp), contentAlignment = Alignment.Center) {
+                    StationArtwork(station, ui.band, ui.playing, Modifier.size(width = 258.dp, height = 250.dp))
+                }
+            else -> StationArtwork(station, ui.band, ui.playing, Modifier.size(width = 258.dp, height = 250.dp))
+        }
         Spacer(Modifier.width(52.dp))
         if (station == null) {
             Text("No station – open Station List and scan", color = RadioColors.Muted, fontSize = 26.sp,
