@@ -14,6 +14,11 @@ sealed interface AudioStatus {
      * [viaIp] = virtual RF channel whose audio is actually relayed from the IP stream.
      */
     data class Broadcast(val fallback: Boolean, val viaIp: Boolean = false) : AudioStatus
+    /**
+     * Hybrid handover demo: the station is received on [path] (IP or BROADCAST) and switches to the other
+     * network every few seconds; [count] = handovers so far. Audio continues without a gap.
+     */
+    data class Handover(val path: ReceptionPath, val count: Int) : AudioStatus
     /** IP stream lost and broadcast fallback is off: silent, retrying until the internet is back. */
     data object Offline : AudioStatus
     /** [network] = connectivity-type failure (eligible for broadcast fallback); false = e.g. geo-blocked. */
@@ -26,8 +31,12 @@ enum class ReceptionPath { NONE, BROADCAST, IP }
 fun AudioStatus.receptionPath(): ReceptionPath = when (this) {
     AudioStatus.Live -> ReceptionPath.IP
     is AudioStatus.Broadcast -> ReceptionPath.BROADCAST
+    is AudioStatus.Handover -> path
     else -> ReceptionPath.NONE
 }
+
+/** Path after [count] handovers: starts on IP, then alternates RF, IP, RF … */
+fun handoverPath(count: Int): ReceptionPath = if (count % 2 == 0) ReceptionPath.IP else ReceptionPath.BROADCAST
 
 /** Audio sink for the tuner. Implementations own audio focus. */
 interface RadioAudioOutput {

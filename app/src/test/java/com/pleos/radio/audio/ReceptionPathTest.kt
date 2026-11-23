@@ -15,4 +15,12 @@ class ReceptionPathTest {
         // Offline (stream lost, fallback off): no reception animation.
         assertEquals(ReceptionPath.NONE, AudioStatus.Offline.receptionPath())
     }
+
+    @Test fun handoverAlternatesIpAndRf() {
+        assertEquals(ReceptionPath.IP, handoverPath(0))
+        assertEquals(ReceptionPath.BROADCAST, handoverPath(1))
+        assertEquals(ReceptionPath.IP, handoverPath(2))
+        assertEquals(ReceptionPath.BROADCAST, AudioStatus.Handover(ReceptionPath.BROADCAST, 3).receptionPath())
+        assertEquals(ReceptionPath.IP, AudioStatus.Handover(ReceptionPath.IP, 4).receptionPath())
+    }
 }

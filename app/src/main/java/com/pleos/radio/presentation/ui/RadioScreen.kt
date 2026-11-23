@@ -287,6 +287,13 @@ private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
             Text("No internet", color = Color(0xFFFF7A85), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         }
         is AudioStatus.Broadcast -> LiveTag(if (status.fallback) "RF · IP lost" else "RF", Color(0xFF5AA9FF))
+        is AudioStatus.Handover -> {
+            val rf = status.path == ReceptionPath.BROADCAST
+            LiveTag(
+                (if (rf) "RF" else "IP") + "  ⇄ handover #${status.count} · seamless",
+                if (rf) Color(0xFF5AA9FF) else Color(0xFF3DDBD9),
+            )
+        }
         AudioStatus.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(18.dp), color = RadioColors.AccentBright, strokeWidth = 2.dp)
             Spacer(Modifier.width(10.dp))

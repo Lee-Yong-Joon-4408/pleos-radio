@@ -1,5 +1,6 @@
 package com.pleos.radio.audio
 
+import android.util.Log
 import com.pleos.radio.domain.Station
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -35,11 +36,23 @@ class HybridRadioAudio(
         get() = currentStation.value
         set(value) { currentStation.value = value }
     private var probeJob: Job? = null
+    private var handoverJob: Job? = null
+    private var handoverStationId: String? = null
+    /** Handovers performed on the current handover-demo station (even = IP, odd = RF). */
+    private val handovers = MutableStateFlow(0)
 
     /** Off until a real tuner exists: a lost IP stream then means silence + "no internet", not a tone. */
     @Volatile private var broadcastFallbackEnabled = false
 
-    override val status: StateFlow<AudioStatus> = combine(route, fallback, streaming.status, currentStation) { r, fb, s, st ->
+    override val status: StateFlow<AudioStatus> = combine(route, fallback, streaming.status, currentStation, handovers) { r, fb, s, st, n ->
+        when {
+            // Handover demo: same decoded audio, only the reception path changes -> no gap in the output.
+            r == Route.STREAM && st?.handoverDemo == true && s == AudioStatus.Live -> AudioStatus.Handover(handoverPath(n), n)
+            else -> plainStatus(r, fb, s, st)
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, AudioStatus.Idle)
+
+    private fun plainStatus(r: Route, fb: Boolean, s: AudioStatus, st: Station?): AudioStatus =
         when (r) {
             Route.NONE -> AudioStatus.Idle
             Route.BROADCAST -> AudioStatus.Broadcast(fallback = fb)
@@ -47,7 +60,6 @@ class HybridRadioAudio(
             // Virtual RF channel: presented as RF reception while its audio is relayed from the IP stream.
             Route.STREAM -> if (st?.virtualRf == true && s == AudioStatus.Live) AudioStatus.Broadcast(fallback = false, viaIp = true) else s
         }
-    }.stateIn(scope, SharingStarted.Eagerly, AudioStatus.Idle)
 
     init {
         // Only the active path may report focus loss; the other one may lose focus to us during a switch.
@@ -87,6 +99,31 @@ class HybridRadioAudio(
         if (route.value == Route.BROADCAST) simulated.stop()
         route.value = Route.STREAM
         streaming.play(station)
+        startHandover(station)
+    }
+
+    /**
+     * Handover demo: every [HANDOVER_INTERVAL_MS] while the audio is live, hand the station over to the other
+     * network (IP <-> RF). Both paths carry the same programme and the player is never stopped or re-prepared,
+     * so the switch is seamless; a real tuner would be time-aligned to the stream before the crossover.
+     */
+    private fun startHandover(station: Station) {
+        // Re-selecting the station that is already handing over keeps the running cycle.
+        if (station.handoverDemo && handoverJob?.isActive == true && handoverStationId == station.id) return
+        handoverJob?.cancel()
+        handoverStationId = station.id
+        handovers.value = 0
+        if (!station.handoverDemo) return
+        handoverJob = scope.launch {
+            while (true) {
+                delay(HANDOVER_INTERVAL_MS)
+                if (route.value != Route.STREAM || current?.id != station.id) return@launch
+                if (streaming.status.value != AudioStatus.Live) continue
+                handovers.value += 1
+                val n = handovers.value
+                Log.i(TAG, "handover #$n ${handoverPath(n - 1)} -> ${handoverPath(n)} (${station.name}, audio uninterrupted)")
+            }
+        }
     }
 
     private fun playBroadcast(station: Station, isFallback: Boolean) {
@@ -145,6 +182,8 @@ class HybridRadioAudio(
 
     private fun stopAll() {
         probeJob?.cancel()
+        handoverJob?.cancel()
+        handovers.value = 0
         route.value = Route.NONE
         fallback.value = false
         simulated.stop()
@@ -163,5 +202,7 @@ class HybridRadioAudio(
 
     private companion object {
         const val PROBE_INTERVAL_MS = 20_000L
+        const val HANDOVER_INTERVAL_MS = 5_000L
+        const val TAG = "HybridRadioAudio"
     }
 }

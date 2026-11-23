@@ -128,6 +128,7 @@ class StationCatalog(private val random: Random = Random.Default) {
             "dab_de_hr3" to "https://www.hr3.de/favicon.png",
             "fm_de_swr3" to "https://www.swr3.de/assets/swr3/icons/apple-touch-icon.png",
             "fm_de_hr3" to "https://www.hr3.de/favicon.png",
+            "fm_de_swr1" to "https://www.swr.de/assets/swr/swr1/apple-touch-icon.png",
             "dab_de_radioeins" to "https://www.radioeins.de/content/dam/rbb/rbb/logos/touch/rad-152.png",
             // All India Radio (Akashvani channel artwork)
             "drm_air_mumbai_b" to AIR_LOGO + "airmumbaiasmita.jpg",
@@ -272,6 +273,7 @@ class StationCatalog(private val random: Random = Random.Default) {
 
         const val HR3_STREAM = "https://dispatcher.rndfnk.com/hr/hr3/live/mp3/high"
         const val SWR3_STREAM = "https://liveradio.swr.de/sw282p3/swr3/play.mp3"
+        const val SWR1_BW_STREAM = "https://liveradio.swr.de/sw282p3/swr1bw/play.mp3"
 
         /**
          * German FM (UKW) stations that broadcast the same programme as their DAB+ service: hr3 Rhein-Main from
@@ -283,10 +285,14 @@ class StationCatalog(private val random: Random = Random.Default) {
                 "ARD live stream · worldwide", "Pop", signal = 4, stream = StreamSource.Direct(HR3_STREAM), speechLanguage = "de-DE"),
             Station("fm_de_swr3", Band.FM, "SWR3", 92_200, null, "FM", "SWR BW · same as DAB+ 9D SWR3",
                 "ARD live stream · worldwide", "Pop", signal = 4, stream = StreamSource.Direct(SWR3_STREAM), speechLanguage = "de-DE"),
+            // SWR1 Baden-Württemberg, Sender Stuttgart 94.7 MHz: IP <-> RF handover demo every 5 s (seamless audio).
+            Station("fm_de_swr1", Band.FM, "SWR1 BW", 94_700, null, "FM", "SWR1 · IP ⇄ RF handover every 5 s",
+                "Seamless hybrid handover demo", "Pop / Rock", signal = 4, stream = StreamSource.Direct(SWR1_BW_STREAM),
+                speechLanguage = "de-DE", handoverDemo = true),
         )
 
         /** FM / DAB(T-DMB) simulcast pairs kept in both preset lists. */
-        val AUTO_PRESETS = setOf("fm_de_hr3", "fm_de_swr3", "dab_de_hr3", "dab_de_swr3", "fm_kbs_cool", "dab_ukbs_music")
+        val AUTO_PRESETS = setOf("fm_de_hr3", "fm_de_swr3", "fm_de_swr1", "dab_de_hr3", "dab_de_swr3", "fm_kbs_cool", "dab_ukbs_music")
 
         /** Seoul metropolitan area frequencies, ascending. */
         val FM = listOf(

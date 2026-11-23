@@ -82,6 +82,15 @@ adb shell am start -n com.pleos.radio.debug/com.pleos.radio.presentation.MainAct
 
 U-KBS MUSIC은 RF(DMB) 수신으로 표시하고 소리는 같은 내용인 KBS 쿨FM IP 스트림에서 가져옵니다. 수도권 DMB의 MBC(올댓뮤직)·SBS V-Radio는 FM 동시방송이 아닌 자체 편성이라 넣지 않았습니다.
 
+### IP ⇄ RF handover 데모 (SWR1 BW)
+FM 목록과 프리셋에 **SWR1 Baden-Württemberg 94.7 MHz(Sender Stuttgart)** 를 추가했습니다. 이 채널을 선택하면 오디오가 재생되는 동안 **5초마다 수신 경로가 IP → RF → IP …로 바뀝니다.**
+
+* 상태 표시가 `LIVE · IP ⇄ handover #n · seamless`와 `LIVE · RF ⇄ …`로 번갈아 바뀌고, 배경도 IP 패킷 애니메이션과 방송 전파 애니메이션 사이에서 전환됩니다.
+* 두 경로가 같은 방송을 전달하므로, handover 때 플레이어를 멈추거나 다시 준비하지 않습니다. 그래서 오디오가 끊기지 않고(새 AudioTrack 생성 없음), 자막도 그대로 이어집니다.
+* 실제 차량에서는 RF 튜너와 IP 스트림의 지연을 맞춘(time-aligned) 뒤에 넘겨야 같은 효과가 납니다. 지금은 RF 경로가 가상이라 소리는 IP 스트림에서 나옵니다.
+* `adb logcat -s HybridRadioAudio`에서 `handover #n IP -> BROADCAST … (audio uninterrupted)` 로그로 확인할 수 있습니다.
+* 재생 중 인터넷이 끊기면 handover를 멈추고, 기존 규칙대로 "인터넷 연결 없음"을 표시하거나 방송망으로 전환합니다.
+
 ## 실시간 번역 자막 (DAB · DRM)
 재생 중인 오디오(ExoPlayer가 디코딩한 PCM)를 16 kHz 모노로 바꿔 약 6초 단위로 음성 인식 → 번역하고, 메인 화면 하단 5줄 패널에 최신 문장이 아래쪽에 오도록 표시합니다. 무음은 건너뛰고, 처리가 밀리면 가장 최근 구간만 처리합니다. 방송 언어: BBC en-GB, 독일 de-DE, AIR hi-IN / bn-IN / mr-IN / gu-IN.
 
