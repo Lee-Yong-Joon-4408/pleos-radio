@@ -96,9 +96,27 @@ FM·AM(한국어 방송)은 같은 패널에서 **번역 없이 받아쓰기만*
 ### 선택: Google Cloud (유료)
 Settings → Live caption engine에서 Google Cloud를 고르면 Speech-to-Text + Cloud Translation을 씁니다. Speech-to-Text·Cloud Translation API를 켠 API 키를 `local.properties`의 `GOOGLE_CLOUD_API_KEY`나 Settings에 입력해야 하며, 사용량만큼 과금됩니다(1시간 연속 약 1~1.5달러 + 번역). 방송 오디오가 Google로 전송됩니다.
 
+## 에뮬레이터 네트워크 자동 복구 (개발용)
+Pleos 에뮬레이터는 비행기 모드를 켰다 끄거나 과부하가 걸린 뒤 **PC는 인터넷이 되는데 에뮬레이터만 네트워크를 잃는** 경우가 있습니다(기본 네트워크 없음). 그러면 IP 스트림을 받을 수 없어 실제 방송 대신 "인터넷 연결 없음"(또는 시뮬레이션 튜너)이 나옵니다. 앱은 에뮬레이터 안에서 시스템 권한 없이 실행되고 Pleos 이미지는 root를 허용하지 않아 앱이 직접 복구할 수 없으므로, **PC에서 실행하는 감시 스크립트**로 복구합니다.
+
+```bash
+./scripts/emulator-network-watchdog.sh            # 실행 중인 에뮬레이터 감시 (Ctrl+C로 종료)
+./scripts/emulator-network-watchdog.sh --start    # 에뮬레이터가 없으면 먼저 Cold Boot로 실행
+#   --avd NAME (기본 Pleos_Connect_v2.1) · --interval SEC (기본 15) · --once (한 번만 점검)
+```
+
+동작:
+1. PC가 온라인인데 에뮬레이터에 기본 네트워크가 없거나 외부(8.8.8.8)에 닿지 않는 상태가 **두 번 연속** 확인되면 복구를 시작합니다. PC 자체가 오프라인이면 아무것도 하지 않습니다.
+2. **1단계:** 에뮬레이터 재부팅(`adb reboot`) — 시험에서 약 15~20초 만에 네트워크가 돌아왔습니다.
+3. **2단계:** 그래도 안 되면 AVD를 종료하고 Cold Boot(스냅샷 없이)로 다시 실행합니다.
+4. 복구 전에 Pleos Radio가 실행 중이었으면, 운전자 사용자(Pleos는 user 10)가 준비된 뒤 앱을 다시 실행합니다.
+
+확인 결과: 끊김 감지와 1·2단계 복구는 에뮬레이터에서 여러 번 동작했습니다. 앱 재실행은 스크립트에 앱 화면 이름을 잘못 적어 실패했던 문제를 고쳤으나(디버그 빌드는 패키지에만 `.debug`가 붙으므로 전체 클래스 이름 사용), **수정 후 재실행은 아직 시험하지 못했습니다.** 재실행되지 않으면 앱을 직접 실행하면 됩니다.
+
 ## 구조
 ```
 app/src/main/cpp/                whisper.cpp 빌드(CMake) + JNI 브리지
+scripts/emulator-network-watchdog.sh   에뮬레이터 네트워크 자동 복구(PC에서 실행)
 app/src/main/java/com/pleos/radio/
 ├─ RadioApplication.kt          서비스 로케이터
 ├─ domain/  Station.kt, RadioLogic.kt, StreamSource.kt, caption/(Captions, PcmChunker)   (Android 비의존, 단위 테스트 대상)
