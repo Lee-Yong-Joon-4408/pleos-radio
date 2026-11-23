@@ -14,6 +14,8 @@ sealed interface AudioStatus {
      * [viaIp] = virtual RF channel whose audio is actually relayed from the IP stream.
      */
     data class Broadcast(val fallback: Boolean, val viaIp: Boolean = false) : AudioStatus
+    /** IP stream lost and broadcast fallback is off: silent, retrying until the internet is back. */
+    data object Offline : AudioStatus
     /** [network] = connectivity-type failure (eligible for broadcast fallback); false = e.g. geo-blocked. */
     data class Error(val message: String, val network: Boolean = true) : AudioStatus
 }
@@ -46,4 +48,10 @@ interface RadioAudioOutput {
 
     /** Decode the stream's video track (only while it may be shown: TV station, parked, playing). */
     fun setVideoEnabled(enabled: Boolean) {}
+
+    /** When the IP stream is lost: true = switch to the (simulated) broadcast tuner, false = stay silent. */
+    fun setBroadcastFallbackEnabled(enabled: Boolean) {}
+
+    /** Try the IP stream again right away (after a loss). */
+    fun retryIp() {}
 }

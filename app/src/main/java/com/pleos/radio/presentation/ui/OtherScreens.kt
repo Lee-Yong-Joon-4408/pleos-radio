@@ -130,6 +130,12 @@ fun SettingsScreen(ui: RadioUiState, vm: RadioViewModel) {
                 }
             }
         }
+        SettingRow(
+            "Broadcast fallback (simulated tuner)",
+            "When the internet stream is lost — On: switch to the simulated broadcast tuner (tone) · Off: silence and a 'no internet' notice",
+        ) {
+            ChipRow(listOf(true, false), ui.broadcastFallback, { if (it) "On" else "Off" }, vm::setBroadcastFallback)
+        }
         SettingRow("FM / AM transcript", "Show Korean speech as text in the caption panel") {
             ChipRow(listOf(true, false), ui.transcriptEnabled, { if (it) "On" else "Off" }, vm::setTranscriptEnabled)
         }

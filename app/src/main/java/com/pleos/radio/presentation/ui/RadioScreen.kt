@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -195,6 +196,11 @@ private fun NowPlaying(ui: RadioUiState, vm: RadioViewModel) {
                 modifier = Modifier.align(Alignment.CenterVertically))
             return@Row
         }
+        // IP stream lost with the broadcast fallback off: silence + a large notice instead of the station info.
+        if (ui.playing && ui.audioStatus == AudioStatus.Offline) {
+            OfflineNotice(station, vm::retryNetwork)
+            return@Row
+        }
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Pill(station.badge)
@@ -275,6 +281,11 @@ private fun RoundControl(
 private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
     when (status) {
         AudioStatus.Live -> LiveTag("IP", Color(0xFF3DDBD9))
+        AudioStatus.Offline -> Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.WifiOff, null, tint = Color(0xFFFF7A85), modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("No internet", color = Color(0xFFFF7A85), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        }
         is AudioStatus.Broadcast -> LiveTag(if (status.fallback) "RF · IP lost" else "RF", Color(0xFF5AA9FF))
         AudioStatus.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(18.dp), color = RadioColors.AccentBright, strokeWidth = 2.dp)
@@ -288,6 +299,32 @@ private fun AudioStatusChip(status: AudioStatus, onRetry: () -> Unit) {
             modifier = Modifier.clickable(role = Role.Button, onClickLabel = "Retry", onClick = onRetry),
         )
         AudioStatus.Idle -> Unit
+    }
+}
+
+/** Large "no internet" notice shown in place of the station info while the IP stream is unreachable. */
+@Composable
+private fun OfflineNotice(station: Station, onRetry: () -> Unit) {
+    Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.Center) {
+        Text("${station.name}  ·  ${station.frequencyLabel}", color = RadioColors.Muted, fontSize = 22.sp, maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.WifiOff, null, tint = Color(0xFFFF7A85), modifier = Modifier.size(58.dp))
+            Spacer(Modifier.width(16.dp))
+            Text("인터넷 연결 없음", color = RadioColors.Text, fontSize = 48.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(Modifier.height(8.dp))
+        Text("No internet connection · playback resumes automatically when the connection is back",
+            color = RadioColors.TextSecondary, fontSize = 20.sp)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Retry now", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Medium,
+            modifier = Modifier
+                .background(RadioColors.Accent, RoundedCornerShape(8.dp))
+                .clickable(role = Role.Button, onClick = onRetry)
+                .padding(horizontal = 22.dp, vertical = 10.dp),
+        )
     }
 }
 

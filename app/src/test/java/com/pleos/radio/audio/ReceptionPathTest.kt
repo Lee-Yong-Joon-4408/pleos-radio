@@ -12,5 +12,7 @@ class ReceptionPathTest {
         assertEquals(ReceptionPath.NONE, AudioStatus.Connecting.receptionPath())
         assertEquals(ReceptionPath.NONE, AudioStatus.Error("x").receptionPath())
         assertEquals(ReceptionPath.NONE, AudioStatus.Idle.receptionPath())
+        // Offline (stream lost, fallback off): no reception animation.
+        assertEquals(ReceptionPath.NONE, AudioStatus.Offline.receptionPath())
     }
 }

@@ -43,6 +43,10 @@ class RadioPreferences(context: Context) {
         ?: if (prefs.getBoolean(KEY_RF_PRESETS, false)) LEGACY_RF_TWINS else emptySet()
     fun saveAutoAddedPresets(ids: Set<String>) = prefs.edit().putStringSet(KEY_AUTO_PRESETS, ids).apply()
 
+    /** Switch to the simulated broadcast tuner when the IP stream is lost (off by default). */
+    fun broadcastFallback(): Boolean = prefs.getBoolean(KEY_BROADCAST_FALLBACK, false)
+    fun saveBroadcastFallback(enabled: Boolean) = prefs.edit().putBoolean(KEY_BROADCAST_FALLBACK, enabled).apply()
+
     fun captionEngine(): String? = prefs.getString(KEY_ENGINE, null)
     fun saveCaptionEngine(name: String) = prefs.edit().putString(KEY_ENGINE, name).apply()
 
@@ -60,6 +64,7 @@ class RadioPreferences(context: Context) {
         const val KEY_CLOUD_KEY = "google_cloud_api_key"
         const val KEY_ENGINE = "caption_engine"
         const val KEY_TRANSCRIPT = "transcript_enabled"
+        const val KEY_BROADCAST_FALLBACK = "broadcast_fallback"
         const val KEY_RF_PRESETS = "rf_presets_v1"   // legacy flag: the 15 RF twins were added
         const val KEY_AUTO_PRESETS = "auto_added_presets"
         val LEGACY_RF_TWINS = setOf(

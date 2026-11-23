@@ -57,6 +57,8 @@ data class RadioUiState(
     val videoAllowed: Boolean = false,
     /** TV video shown in the large view. */
     val videoExpanded: Boolean = false,
+    /** Simulated broadcast tuner takes over when the IP stream is lost. */
+    val broadcastFallback: Boolean = false,
     val message: String? = null,
 ) {
     val isFavorite: Boolean get() = current?.id in favorites
@@ -91,6 +93,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
             captionEngine = CaptionEngineType.fromName(prefs.captionEngine()),
             whisperModel = WhisperModel.fromName(prefs.whisperModel()),
             transcriptEnabled = prefs.transcriptEnabled(),
+            broadcastFallback = prefs.broadcastFallback(),
         )
     )
     val ui: StateFlow<RadioUiState> = _ui.asStateFlow()
@@ -119,6 +122,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         audio.onFocusLost = { _ui.update { it.copy(playing = false) } }
+        audio.setBroadcastFallbackEnabled(prefs.broadcastFallback())
         showBand(prefs.lastBand() ?: Band.entries.first())
         syncAudio()
         viewModelScope.launch { audio.status.collect { s -> _ui.update { it.copy(audioStatus = s) } } }
@@ -309,6 +313,15 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Player for rendering TV video. */
     val videoPlayer get() = audio.videoPlayer
+
+    fun setBroadcastFallback(enabled: Boolean) {
+        _ui.update { it.copy(broadcastFallback = enabled) }
+        prefs.saveBroadcastFallback(enabled)
+        audio.setBroadcastFallbackEnabled(enabled)
+    }
+
+    /** "Retry now" on the no-internet notice. */
+    fun retryNetwork() = audio.retryIp()
 
     fun setVideoAllowed(allowed: Boolean) = _ui.update { it.copy(videoAllowed = allowed) }
 

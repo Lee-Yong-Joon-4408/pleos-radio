@@ -24,7 +24,7 @@ class HybridRadioAudio(
     private val scope: CoroutineScope,
 ) : RadioAudioOutput {
 
-    private enum class Route { NONE, BROADCAST, STREAM }
+    private enum class Route { NONE, BROADCAST, STREAM, OFFLINE }
 
     override var onFocusLost: (() -> Unit)? = null
 
@@ -36,10 +36,14 @@ class HybridRadioAudio(
         set(value) { currentStation.value = value }
     private var probeJob: Job? = null
 
+    /** Off until a real tuner exists: a lost IP stream then means silence + "no internet", not a tone. */
+    @Volatile private var broadcastFallbackEnabled = false
+
     override val status: StateFlow<AudioStatus> = combine(route, fallback, streaming.status, currentStation) { r, fb, s, st ->
         when (r) {
             Route.NONE -> AudioStatus.Idle
             Route.BROADCAST -> AudioStatus.Broadcast(fallback = fb)
+            Route.OFFLINE -> AudioStatus.Offline
             // Virtual RF channel: presented as RF reception while its audio is relayed from the IP stream.
             Route.STREAM -> if (st?.virtualRf == true && s == AudioStatus.Live) AudioStatus.Broadcast(fallback = false, viaIp = true) else s
         }
@@ -49,10 +53,12 @@ class HybridRadioAudio(
         // Only the active path may report focus loss; the other one may lose focus to us during a switch.
         simulated.onFocusLost = { if (route.value == Route.BROADCAST) lose() }
         streaming.onFocusLost = { if (route.value == Route.STREAM) lose() }
-        // Hybrid switching: IP stream lost (network) -> broadcast tuner.
+        // IP stream lost (network) -> broadcast tuner, or silence + retry when the fallback is off.
         scope.launch {
             streaming.status.collect { s ->
-                if (route.value == Route.STREAM && s is AudioStatus.Error && s.network) switchToBroadcast()
+                if (route.value == Route.STREAM && s is AudioStatus.Error && s.network) {
+                    if (broadcastFallbackEnabled) switchToBroadcast() else switchToOffline()
+                }
             }
         }
     }
@@ -69,6 +75,8 @@ class HybridRadioAudio(
             station.stream == null -> playBroadcast(station, isFallback = false)
             // Already on the broadcast fallback for this station: stay there until the IP probe succeeds.
             sameStation && route.value == Route.BROADCAST && fallback.value -> simulated.play(station)
+            // Already waiting offline for this station: keep waiting (the probe resumes it).
+            sameStation && route.value == Route.OFFLINE -> Unit
             else -> playIp(station)
         }
     }
@@ -91,17 +99,46 @@ class HybridRadioAudio(
     private fun switchToBroadcast() {
         val station = current ?: return
         playBroadcast(station, isFallback = true)
+        startProbe(station)
+    }
+
+    private fun switchToOffline() {
+        val station = current ?: return
+        streaming.stop()
+        simulated.stop()
+        fallback.value = false
+        route.value = Route.OFFLINE
+        startProbe(station)
+    }
+
+    /** Polls the station's IP stream while on fallback / offline and returns to it once reachable. */
+    private fun startProbe(station: Station) {
         probeJob?.cancel()
         probeJob = scope.launch {
             while (true) {
                 delay(PROBE_INTERVAL_MS)
-                if (route.value != Route.BROADCAST || !fallback.value || current?.id != station.id) return@launch
+                val waiting = route.value == Route.OFFLINE || (route.value == Route.BROADCAST && fallback.value)
+                if (!waiting || current?.id != station.id) return@launch
                 if (ipReachable(station)) {
                     playIp(station)
                     return@launch
                 }
             }
         }
+    }
+
+    override fun setBroadcastFallbackEnabled(enabled: Boolean) {
+        broadcastFallbackEnabled = enabled
+        // Apply immediately if the stream is currently lost.
+        when {
+            !enabled && route.value == Route.BROADCAST && fallback.value -> switchToOffline()
+            enabled && route.value == Route.OFFLINE -> switchToBroadcast()
+        }
+    }
+
+    override fun retryIp() {
+        val station = current ?: return
+        if (route.value == Route.OFFLINE || (route.value == Route.BROADCAST && fallback.value)) playIp(station)
     }
 
     override fun stop() = stopAll()
